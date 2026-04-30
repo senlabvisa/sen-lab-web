@@ -2,14 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Outfit (titres) + Inter (corps) — gratuits, libres CDN */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 :root {
   color-scheme: light;
 }
 
-html, body { height: 100%; }
+html, body {
+  height: 100%;
+}
+
 body {
-  background-color: #F9FAFB;
-  color: #111827;
+  background: #FAFAFA;
+  color: #0F172A;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6,
+.font-display {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* === Slider — palette legacy science (TPs existants) === */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: #DBE7FE;
+  border-radius: 999px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background: #1E40AF;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.35);
+  transition: transform 0.15s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  background: #1E40AF;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.35);
+}
+
+/* Variante slider lab (violet) — utilisée dans Quiz Builder, Pricing-like */
+input[type="range"].slider-lab {
+  background: #DDD6FE;
+}
+input[type="range"].slider-lab::-webkit-slider-thumb {
+  background: #8B5CF6;
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.45);
+}
+input[type="range"].slider-lab::-moz-range-thumb {
+  background: #8B5CF6;
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.45);
+}
+
+/* Scrollbar discret */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.15);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.25);
+}
+
+/* Scrollbar lab dark (sidebar) */
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Focus ring — violet pour les nouvelles pages, bleu pour legacy */
+*:focus-visible {
+  outline: 2px solid #8B5CF6;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Forcer focus bleu sur sections legacy explicitement marquées */
+.legacy-focus *:focus-visible {
+  outline: 2px solid #1E40AF;
+}
+
+/* Cacher scrollbar tout en gardant scroll (nav horizontal) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

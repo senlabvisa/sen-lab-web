@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#1E40AF"/>
+  <g fill="#ffffff">
+    <circle cx="256" cy="192" r="48"/>
+    <rect x="228" y="220" width="56" height="120" rx="10"/>
+    <path d="M160 336 h192 l-38 72 h-116 z"/>
+  </g>
+  <text x="256" y="470" font-family="system-ui, sans-serif" font-size="52" font-weight="700" text-anchor="middle" fill="#ffffff">LabVisa</text>
+</svg>

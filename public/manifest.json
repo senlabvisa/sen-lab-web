@@ -1,0 +1,25 @@
+{
+  "name": "Sen Lab Visa — Laboratoires virtuels",
+  "short_name": "Sen Lab Visa",
+  "description": "Laboratoires virtuels STEM pour les élèves sénégalais",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F9FAFB",
+  "theme_color": "#1E40AF",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
