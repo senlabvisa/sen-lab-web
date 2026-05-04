@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   BookOpen,
+  Bot,
   Users,
   Target,
   GraduationCap,
@@ -30,25 +31,29 @@ type NavItem = {
 const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   student: [
     { href: '/dashboard' as Route, label: 'Tableau de bord', icon: LayoutDashboard },
-    { href: '/student/tps' as Route, label: 'Mes TPs', icon: BookOpen },
+    { href: '/student/tps' as Route, label: 'Mes laboratoires', icon: BookOpen },
+    { href: '/chatbot' as Route, label: 'Tuteur virtuel', icon: Bot },
     { href: '/student/join' as Route, label: 'Rejoindre une classe', icon: KeyRound },
   ],
   teacher: [
     { href: '/dashboard' as Route, label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/teacher/classes' as Route, label: 'Mes classes', icon: GraduationCap },
     { href: '/teacher/attempts' as Route, label: 'Tentatives', icon: Target },
+    { href: '/chatbot' as Route, label: 'Tuteur virtuel', icon: Bot },
   ],
   admin: [
     { href: '/dashboard' as Route, label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/admin/users' as Route, label: 'Utilisateurs', icon: Users },
     { href: '/teacher/classes' as Route, label: 'Classes', icon: GraduationCap },
     { href: '/teacher/attempts' as Route, label: 'Tentatives', icon: Target },
+    { href: '/chatbot' as Route, label: 'Tuteur virtuel', icon: Bot },
   ],
   sysadmin: [
     { href: '/dashboard' as Route, label: 'Vue d’ensemble', icon: LayoutDashboard },
     { href: '/admin/schools' as Route, label: 'Écoles', icon: Building2 },
     { href: '/admin/users' as Route, label: 'Utilisateurs', icon: Users },
     { href: '/teacher/attempts' as Route, label: 'Tentatives', icon: Target },
+    { href: '/chatbot' as Route, label: 'Tuteur virtuel', icon: Bot },
   ],
 };
 
