@@ -11,6 +11,7 @@ const cardVariants = cva('rounded-2xl border transition', {
       'hero-svt': 'border-action-100 bg-hero-emerald shadow-card overflow-hidden relative',
       'hero-maths': 'border-violet-200 bg-hero-violet shadow-card overflow-hidden relative',
       'hero-physique': 'border-science-100 bg-hero-blue shadow-card overflow-hidden relative',
+      'hero-amber': 'border-amber-200 bg-hero-amber shadow-card overflow-hidden relative',
       ghost: 'border-transparent bg-white/60 backdrop-blur-sm shadow-soft',
     },
     padding: {
