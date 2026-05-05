@@ -11,6 +11,10 @@ import { ClassificationVivant6eme } from './classification-vivant-6eme/module';
 import { AlimentationAnimale6eme } from './alimentation-animale-6eme/module';
 import { MasseVolumeDensite6eme } from './masse-volume-densite-6eme/module';
 import { ThermometreTropical6eme } from './thermometre-tropical-6eme/module';
+import { Numeration6eme } from './numeration-6eme/module';
+import { PerimetresAires6eme } from './perimetres-aires-6eme/module';
+import { CercleDroitesAngles6eme } from './cercle-droites-angles-6eme/module';
+import { GraphiquesMeteo6eme } from './graphiques-meteo-6eme/module';
 
 /**
  * Registry slug → composant SimulationModule.
@@ -35,6 +39,10 @@ export const SIMULATION_MODULES: Record<string, ComponentType<SimulationModulePr
   'alimentation-animale-6eme': AlimentationAnimale6eme,
   'masse-volume-densite-6eme': MasseVolumeDensite6eme,
   'thermometre-tropical-6eme': ThermometreTropical6eme,
+  'numeration-6eme': Numeration6eme,
+  'perimetres-aires-6eme': PerimetresAires6eme,
+  'cercle-droites-angles-6eme': CercleDroitesAngles6eme,
+  'graphiques-meteo-6eme': GraphiquesMeteo6eme,
 };
 
 export function getModule(slug: string): ComponentType<SimulationModuleProps> | null {
