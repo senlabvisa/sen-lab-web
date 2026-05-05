@@ -6,6 +6,7 @@ import { Pythagore4eme } from './theoreme-pythagore-4eme/module';
 import { FonctionsAffines3eme } from './fonctions-affines-3eme/module';
 import { MoleculeEau4eme } from './molecule-eau-4eme/module';
 import { EtatsMatiere6eme } from './etats-matiere-6eme/module';
+import { MangroveSaloum6eme } from './mangrove-saloum-6eme/module';
 
 /**
  * Registry slug → composant SimulationModule.
@@ -25,6 +26,7 @@ export const SIMULATION_MODULES: Record<string, ComponentType<SimulationModulePr
   'fonctions-affines-3eme': FonctionsAffines3eme,
   'molecule-eau-4eme': MoleculeEau4eme,
   'etats-matiere-6eme': EtatsMatiere6eme,
+  'mangrove-saloum-6eme': MangroveSaloum6eme,
 };
 
 export function getModule(slug: string): ComponentType<SimulationModuleProps> | null {
