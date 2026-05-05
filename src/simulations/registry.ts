@@ -15,6 +15,9 @@ import { Numeration6eme } from './numeration-6eme/module';
 import { PerimetresAires6eme } from './perimetres-aires-6eme/module';
 import { CercleDroitesAngles6eme } from './cercle-droites-angles-6eme/module';
 import { GraphiquesMeteo6eme } from './graphiques-meteo-6eme/module';
+import { FractionsSimples6eme } from './fractions-simples-6eme/module';
+import { CycleVie6eme } from './cycle-vie-6eme/module';
+import { ChangementsEtat6eme } from './changements-etat-6eme/module';
 
 /**
  * Registry slug → composant SimulationModule.
@@ -43,6 +46,9 @@ export const SIMULATION_MODULES: Record<string, ComponentType<SimulationModulePr
   'perimetres-aires-6eme': PerimetresAires6eme,
   'cercle-droites-angles-6eme': CercleDroitesAngles6eme,
   'graphiques-meteo-6eme': GraphiquesMeteo6eme,
+  'fractions-simples-6eme': FractionsSimples6eme,
+  'cycle-vie-6eme': CycleVie6eme,
+  'changements-etat-6eme': ChangementsEtat6eme,
 };
 
 export function getModule(slug: string): ComponentType<SimulationModuleProps> | null {
