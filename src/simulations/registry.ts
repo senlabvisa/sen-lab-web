@@ -18,6 +18,18 @@ import { GraphiquesMeteo6eme } from './graphiques-meteo-6eme/module';
 import { FractionsSimples6eme } from './fractions-simples-6eme/module';
 import { CycleVie6eme } from './cycle-vie-6eme/module';
 import { ChangementsEtat6eme } from './changements-etat-6eme/module';
+// === 5ème ===
+import { FractionsDecimaux5eme } from './fractions-decimaux-5eme/module';
+import { SymetrieAxiale5eme } from './symetrie-axiale-5eme/module';
+import { Pourcentages5eme } from './pourcentages-5eme/module';
+import { Triangles5eme } from './triangles-5eme/module';
+import { MelangesSolutions5eme } from './melanges-solutions-5eme/module';
+import { CircuitsSimples5eme } from './circuits-simples-5eme/module';
+import { SourcesLumiere5eme } from './sources-lumiere-5eme/module';
+import { Respiration5eme } from './respiration-5eme/module';
+import { CirculationSanguine5eme } from './circulation-sanguine-5eme/module';
+import { Digestion5eme } from './digestion-5eme/module';
+import { SolVivant5eme } from './sol-vivant-5eme/module';
 
 /**
  * Registry slug → composant SimulationModule.
@@ -49,6 +61,18 @@ export const SIMULATION_MODULES: Record<string, ComponentType<SimulationModulePr
   'fractions-simples-6eme': FractionsSimples6eme,
   'cycle-vie-6eme': CycleVie6eme,
   'changements-etat-6eme': ChangementsEtat6eme,
+  // === 5ème ===
+  'fractions-decimaux-5eme': FractionsDecimaux5eme,
+  'symetrie-axiale-5eme': SymetrieAxiale5eme,
+  'pourcentages-5eme': Pourcentages5eme,
+  'triangles-5eme': Triangles5eme,
+  'melanges-solutions-5eme': MelangesSolutions5eme,
+  'circuits-simples-5eme': CircuitsSimples5eme,
+  'sources-lumiere-5eme': SourcesLumiere5eme,
+  'respiration-5eme': Respiration5eme,
+  'circulation-sanguine-5eme': CirculationSanguine5eme,
+  'digestion-5eme': Digestion5eme,
+  'sol-vivant-5eme': SolVivant5eme,
 };
 
 export function getModule(slug: string): ComponentType<SimulationModuleProps> | null {
