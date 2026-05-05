@@ -3,6 +3,7 @@ import type { SimulationModuleProps } from '@senlabvisa/shared-types';
 import { LoiDohm3eme } from './loi-dohm-3eme/module';
 import { Photosynthese4eme } from './photosynthese-4eme/module';
 import { Pythagore4eme } from './theoreme-pythagore-4eme/module';
+import { FonctionsAffines3eme } from './fonctions-affines-3eme/module';
 
 /**
  * Registry slug → composant SimulationModule.
@@ -19,6 +20,7 @@ export const SIMULATION_MODULES: Record<string, ComponentType<SimulationModulePr
   'loi-dohm-3eme': LoiDohm3eme,
   'photosynthese-4eme': Photosynthese4eme,
   'theoreme-pythagore-4eme': Pythagore4eme,
+  'fonctions-affines-3eme': FonctionsAffines3eme,
 };
 
 export function getModule(slug: string): ComponentType<SimulationModuleProps> | null {
