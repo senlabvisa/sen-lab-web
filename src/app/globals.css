@@ -110,6 +110,20 @@ input[type="range"].slider-lab::-moz-range-thumb {
   outline: 2px solid #1E40AF;
 }
 
+/* === Animations Lab Premium (utilisées en inline style) === */
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.85; }
+}
+@keyframes pulseRing {
+  0% { transform: scale(0.6); opacity: 0.7; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes narWave {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
 /* Cacher scrollbar tout en gardant scroll (nav horizontal) */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
