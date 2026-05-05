@@ -9,6 +9,7 @@ import { EtatsMatiere6eme } from './etats-matiere-6eme/module';
 import { MangroveSaloum6eme } from './mangrove-saloum-6eme/module';
 import { ClassificationVivant6eme } from './classification-vivant-6eme/module';
 import { AlimentationAnimale6eme } from './alimentation-animale-6eme/module';
+import { MasseVolumeDensite6eme } from './masse-volume-densite-6eme/module';
 
 /**
  * Registry slug → composant SimulationModule.
@@ -31,6 +32,7 @@ export const SIMULATION_MODULES: Record<string, ComponentType<SimulationModulePr
   'mangrove-saloum-6eme': MangroveSaloum6eme,
   'classification-vivant-6eme': ClassificationVivant6eme,
   'alimentation-animale-6eme': AlimentationAnimale6eme,
+  'masse-volume-densite-6eme': MasseVolumeDensite6eme,
 };
 
 export function getModule(slug: string): ComponentType<SimulationModuleProps> | null {
