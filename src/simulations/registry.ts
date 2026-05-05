@@ -30,6 +30,17 @@ import { Respiration5eme } from './respiration-5eme/module';
 import { CirculationSanguine5eme } from './circulation-sanguine-5eme/module';
 import { Digestion5eme } from './digestion-5eme/module';
 import { SolVivant5eme } from './sol-vivant-5eme/module';
+// === 4ème ===
+import { TheoremeThales4eme } from './theoreme-thales-4eme/module';
+import { Puissances4eme } from './puissances-4eme/module';
+import { CalculLitteral4eme } from './calcul-litteral-4eme/module';
+import { Statistiques4eme } from './statistiques-4eme/module';
+import { AirPression4eme } from './air-pression-4eme/module';
+import { OptiqueLentilles4eme } from './optique-lentilles-4eme/module';
+import { AtomesMolecules4eme } from './atomes-molecules-4eme/module';
+import { IntensiteTension4eme } from './intensite-tension-4eme/module';
+import { ReproductionPlantes4eme } from './reproduction-plantes-4eme/module';
+import { ReproductionAnimale4eme } from './reproduction-animale-4eme/module';
 
 /**
  * Registry slug → composant SimulationModule.
@@ -73,6 +84,17 @@ export const SIMULATION_MODULES: Record<string, ComponentType<SimulationModulePr
   'circulation-sanguine-5eme': CirculationSanguine5eme,
   'digestion-5eme': Digestion5eme,
   'sol-vivant-5eme': SolVivant5eme,
+  // === 4ème ===
+  'theoreme-thales-4eme': TheoremeThales4eme,
+  'puissances-4eme': Puissances4eme,
+  'calcul-litteral-4eme': CalculLitteral4eme,
+  'statistiques-4eme': Statistiques4eme,
+  'air-pression-4eme': AirPression4eme,
+  'optique-lentilles-4eme': OptiqueLentilles4eme,
+  'atomes-molecules-4eme': AtomesMolecules4eme,
+  'intensite-tension-4eme': IntensiteTension4eme,
+  'reproduction-plantes-4eme': ReproductionPlantes4eme,
+  'reproduction-animale-4eme': ReproductionAnimale4eme,
 };
 
 export function getModule(slug: string): ComponentType<SimulationModuleProps> | null {
