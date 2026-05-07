@@ -41,6 +41,19 @@ import { AtomesMolecules4eme } from './atomes-molecules-4eme/module';
 import { IntensiteTension4eme } from './intensite-tension-4eme/module';
 import { ReproductionPlantes4eme } from './reproduction-plantes-4eme/module';
 import { ReproductionAnimale4eme } from './reproduction-animale-4eme/module';
+// === 3ème ===
+import { Trigonometrie3eme } from './trigonometrie-3eme/module';
+import { RacinesCarrees3eme } from './racines-carrees-3eme/module';
+import { SystemesEquations3eme } from './systemes-equations-3eme/module';
+import { AgrandissementReduction3eme } from './agrandissement-reduction-3eme/module';
+import { Cinematique3eme } from './cinematique-3eme/module';
+import { PoidsMasse3eme } from './poids-masse-3eme/module';
+import { PhSolutions3eme } from './ph-solutions-3eme/module';
+import { EnergieElectrique3eme } from './energie-electrique-3eme/module';
+import { GenetiqueMendel3eme } from './genetique-mendel-3eme/module';
+import { SystemeImmunitaire3eme } from './systeme-immunitaire-3eme/module';
+import { SystemeNerveux3eme } from './systeme-nerveux-3eme/module';
+import { ProcreationHumaine3eme } from './procreation-humaine-3eme/module';
 
 /**
  * Registry slug → composant SimulationModule.
@@ -95,6 +108,19 @@ export const SIMULATION_MODULES: Record<string, ComponentType<SimulationModulePr
   'intensite-tension-4eme': IntensiteTension4eme,
   'reproduction-plantes-4eme': ReproductionPlantes4eme,
   'reproduction-animale-4eme': ReproductionAnimale4eme,
+  // === 3ème ===
+  'trigonometrie-3eme': Trigonometrie3eme,
+  'racines-carrees-3eme': RacinesCarrees3eme,
+  'systemes-equations-3eme': SystemesEquations3eme,
+  'agrandissement-reduction-3eme': AgrandissementReduction3eme,
+  'cinematique-3eme': Cinematique3eme,
+  'poids-masse-3eme': PoidsMasse3eme,
+  'ph-solutions-3eme': PhSolutions3eme,
+  'energie-electrique-3eme': EnergieElectrique3eme,
+  'genetique-mendel-3eme': GenetiqueMendel3eme,
+  'systeme-immunitaire-3eme': SystemeImmunitaire3eme,
+  'systeme-nerveux-3eme': SystemeNerveux3eme,
+  'procreation-humaine-3eme': ProcreationHumaine3eme,
 };
 
 export function getModule(slug: string): ComponentType<SimulationModuleProps> | null {
