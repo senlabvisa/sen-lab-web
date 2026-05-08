@@ -21,7 +21,6 @@ ENV NEXT_PUBLIC_GATEWAY_URL=$NEXT_PUBLIC_GATEWAY_URL
 RUN pnpm build
 
 FROM node:20-alpine
-RUN corepack enable
 WORKDIR /workspace/sen-lab-web
 
 COPY --from=builder /workspace/sen-lab-shared-types /workspace/sen-lab-shared-types
@@ -31,7 +30,8 @@ COPY --from=builder /workspace/sen-lab-web/public ./public
 COPY --from=builder /workspace/sen-lab-web/package.json ./
 COPY --from=builder /workspace/sen-lab-web/next.config.mjs ./
 
-# Le script `start` utilise `next start -p 3005` ; on passe le port via env
+# Pas de corepack/pnpm au runtime : on lance directement next via node_modules/.bin
+# (évite l'erreur ERR_UNKNOWN_BUILTIN_MODULE node:sqlite avec pnpm 11+ sur Node 20)
 ENV PORT=3005
 EXPOSE 3005
-CMD ["pnpm", "start"]
+CMD ["node_modules/.bin/next", "start", "-p", "3005"]

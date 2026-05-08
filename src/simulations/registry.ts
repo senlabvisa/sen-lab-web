@@ -54,6 +54,45 @@ import { GenetiqueMendel3eme } from './genetique-mendel-3eme/module';
 import { SystemeImmunitaire3eme } from './systeme-immunitaire-3eme/module';
 import { SystemeNerveux3eme } from './systeme-nerveux-3eme/module';
 import { ProcreationHumaine3eme } from './procreation-humaine-3eme/module';
+// === Seconde ===
+import { Vecteurs2nde } from './vecteurs-2nde/module';
+import { Statistiques2nde } from './statistiques-2nde/module';
+import { EquationsSecondDegre2nde } from './equations-second-degre-2nde/module';
+import { FonctionsReference2nde } from './fonctions-reference-2nde/module';
+import { ForcesEquilibre2nde } from './forces-equilibre-2nde/module';
+import { TableauPeriodique2nde } from './tableau-periodique-2nde/module';
+import { MouvementVitesse2nde } from './mouvement-vitesse-2nde/module';
+import { MoleConcentration2nde } from './mole-concentration-2nde/module';
+import { CelluleAnimaleVegetale2nde } from './cellule-animale-vegetale-2nde/module';
+import { AdnExtraction2nde } from './adn-extraction-2nde/module';
+import { BiodiversiteBandia2nde } from './biodiversite-bandia-2nde/module';
+// === Première ===
+import { Derivees1ere } from './derivees-1ere/module';
+import { Probabilites1ere } from './probabilites-1ere/module';
+import { SuitesArithGeo1ere } from './suites-arith-geo-1ere/module';
+import { ProduitScalaire1ere } from './produit-scalaire-1ere/module';
+import { EnergieMecanique1ere } from './energie-mecanique-1ere/module';
+import { DosageAcideBase1ere } from './dosage-acide-base-1ere/module';
+import { OptiqueMiroirs1ere } from './optique-miroirs-1ere/module';
+import { ChimieOrganique1ere } from './chimie-organique-1ere/module';
+import { TectoniquePlaques1ere } from './tectonique-plaques-1ere/module';
+import { EvolutionEspeces1ere } from './evolution-especes-1ere/module';
+import { Hormones1ere } from './hormones-1ere/module';
+import { RespirationCellulaire1ere } from './respiration-cellulaire-1ere/module';
+// === Terminale ===
+import { SuitesTerminale } from './suites-terminale/module';
+import { IntegrationTerminale } from './integration-terminale/module';
+import { ExponentielleLogTerminale } from './exponentielle-log-terminale/module';
+import { GeometrieEspaceTerminale } from './geometrie-espace-terminale/module';
+import { ComplexesTerminale } from './complexes-terminale/module';
+import { MecaniqueNewtonTerminale } from './mecanique-newton-terminale/module';
+import { CinetiqueChimiqueTerminale } from './cinetique-chimique-terminale/module';
+import { CircuitRlcTerminale } from './circuit-rlc-terminale/module';
+import { DesintegrationRadioactiveTerminale } from './desintegration-radioactive-terminale/module';
+import { GenetiqueMoleculaireTerminale } from './genetique-moleculaire-terminale/module';
+import { ClimatTerminale } from './climat-terminale/module';
+import { VihImmuniteTerminale } from './vih-immunite-terminale/module';
+import { MeioseMitoseTerminale } from './meiose-mitose-terminale/module';
 
 /**
  * Registry slug → composant SimulationModule.
@@ -121,6 +160,45 @@ export const SIMULATION_MODULES: Record<string, ComponentType<SimulationModulePr
   'systeme-immunitaire-3eme': SystemeImmunitaire3eme,
   'systeme-nerveux-3eme': SystemeNerveux3eme,
   'procreation-humaine-3eme': ProcreationHumaine3eme,
+  // === Seconde ===
+  'vecteurs-2nde': Vecteurs2nde,
+  'statistiques-2nde': Statistiques2nde,
+  'equations-second-degre-2nde': EquationsSecondDegre2nde,
+  'fonctions-reference-2nde': FonctionsReference2nde,
+  'forces-equilibre-2nde': ForcesEquilibre2nde,
+  'tableau-periodique-2nde': TableauPeriodique2nde,
+  'mouvement-vitesse-2nde': MouvementVitesse2nde,
+  'mole-concentration-2nde': MoleConcentration2nde,
+  'cellule-animale-vegetale-2nde': CelluleAnimaleVegetale2nde,
+  'adn-extraction-2nde': AdnExtraction2nde,
+  'biodiversite-bandia-2nde': BiodiversiteBandia2nde,
+  // === Première ===
+  'derivees-1ere': Derivees1ere,
+  'probabilites-1ere': Probabilites1ere,
+  'suites-arith-geo-1ere': SuitesArithGeo1ere,
+  'produit-scalaire-1ere': ProduitScalaire1ere,
+  'energie-mecanique-1ere': EnergieMecanique1ere,
+  'dosage-acide-base-1ere': DosageAcideBase1ere,
+  'optique-miroirs-1ere': OptiqueMiroirs1ere,
+  'chimie-organique-1ere': ChimieOrganique1ere,
+  'tectonique-plaques-1ere': TectoniquePlaques1ere,
+  'evolution-especes-1ere': EvolutionEspeces1ere,
+  'hormones-1ere': Hormones1ere,
+  'respiration-cellulaire-1ere': RespirationCellulaire1ere,
+  // === Terminale ===
+  'suites-terminale': SuitesTerminale,
+  'integration-terminale': IntegrationTerminale,
+  'exponentielle-log-terminale': ExponentielleLogTerminale,
+  'geometrie-espace-terminale': GeometrieEspaceTerminale,
+  'complexes-terminale': ComplexesTerminale,
+  'mecanique-newton-terminale': MecaniqueNewtonTerminale,
+  'cinetique-chimique-terminale': CinetiqueChimiqueTerminale,
+  'circuit-rlc-terminale': CircuitRlcTerminale,
+  'desintegration-radioactive-terminale': DesintegrationRadioactiveTerminale,
+  'genetique-moleculaire-terminale': GenetiqueMoleculaireTerminale,
+  'climat-terminale': ClimatTerminale,
+  'vih-immunite-terminale': VihImmuniteTerminale,
+  'meiose-mitose-terminale': MeioseMitoseTerminale,
 };
 
 export function getModule(slug: string): ComponentType<SimulationModuleProps> | null {
