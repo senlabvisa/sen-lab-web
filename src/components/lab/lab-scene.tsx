@@ -12,13 +12,12 @@ import { ACESFilmicToneMapping } from 'three';
  *
  * Améliorations actives :
  *  - ACES Filmic tone mapping
- *  - Environment HDR (drei preset)
  *  - 3-point lighting + ContactShadows + shadows
- *  - Post-processing (bloom + vignette) opt-out
- *  - Mode AR via @react-three/xr (opt-in via enableAR)
+ *  - Post-processing (bloom + vignette) opt-out via postFx={false}
+ *  - Environment HDR opt-in (null par défaut — évite les fetch CDN lents)
+ *  - Mode AR via @react-three/xr opt-in (enableAR={true})
  *
- * Les fichiers qui importent ce composant doivent être chargés via
- * `next/dynamic({ ssr: false })` pour garder Three.js hors du bundle initial.
+ * Doit être chargé via `next/dynamic({ ssr: false })`.
  */
 
 export type LabSceneProps = {
@@ -30,10 +29,11 @@ export type LabSceneProps = {
   maxDistance?: number;
   enablePan?: boolean;
   onInteract?: () => void;
+  /** Préset HDR Environment. null = pas d'env (défaut, évite fetch CDN). */
   environment?: 'city' | 'sunset' | 'studio' | 'park' | 'night' | 'warehouse' | 'dawn' | 'apartment' | null;
   groundY?: number | null;
   postFx?: boolean;
-  /** Activer le mode AR (WebXR). Affiche un bouton "AR" si supporté. */
+  /** Activer le mode AR (WebXR). false par défaut, opt-in pour les TPs supportés. */
   enableAR?: boolean;
 };
 
@@ -46,17 +46,72 @@ export function LabScene({
   maxDistance = 14,
   enablePan = false,
   onInteract,
-  environment = 'city',
+  environment = null,
   groundY = -1.5,
   postFx = true,
-  enableAR = true,
+  enableAR = false,
 }: LabSceneProps) {
+  // Contenu de la scène (réutilisable avec ou sans XR wrapper)
+  const sceneContent = (
+    <>
+      <ambientLight intensity={0.35} />
+      <directionalLight
+        position={[5, 8, 6]}
+        intensity={1.1}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-far={20}
+        shadow-camera-left={-8}
+        shadow-camera-right={8}
+        shadow-camera-top={8}
+        shadow-camera-bottom={-8}
+      />
+      <directionalLight position={[-4, 3, -5]} intensity={0.35} />
+      <directionalLight position={[0, -2, -8]} intensity={0.18} />
+
+      {environment && (
+        <Suspense fallback={null}>
+          <Environment preset={environment} />
+        </Suspense>
+      )}
+
+      <Suspense fallback={null}>{children}</Suspense>
+
+      {groundY !== null && (
+        <ContactShadows
+          position={[0, groundY, 0]}
+          opacity={0.4}
+          scale={20}
+          blur={2.5}
+          far={4}
+          color="#0F172A"
+        />
+      )}
+
+      <OrbitControls
+        enablePan={enablePan}
+        minDistance={minDistance}
+        maxDistance={maxDistance}
+        enableDamping
+        dampingFactor={0.08}
+      />
+
+      {postFx && (
+        <EffectComposer multisampling={0}>
+          <Bloom intensity={0.45} luminanceThreshold={0.85} luminanceSmoothing={0.5} mipmapBlur />
+          <Vignette eskil={false} offset={0.15} darkness={0.4} />
+        </EffectComposer>
+      )}
+    </>
+  );
+
   return (
     <div className="relative h-full w-full">
       {enableAR && (
         <ARButton
           className="absolute right-3 top-3 z-10 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white shadow-soft hover:bg-violet-700"
-          sessionInit={{ optionalFeatures: ['local-floor', 'hand-tracking'] }}
+          sessionInit={{ optionalFeatures: ['local-floor'] }}
         />
       )}
       <Canvas
@@ -73,58 +128,7 @@ export function LabScene({
         }}
       >
         <color attach="background" args={[background]} />
-
-        <XR>
-          <ambientLight intensity={0.35} />
-          <directionalLight
-            position={[5, 8, 6]}
-            intensity={1.1}
-            castShadow
-            shadow-mapSize-width={1024}
-            shadow-mapSize-height={1024}
-            shadow-camera-far={20}
-            shadow-camera-left={-8}
-            shadow-camera-right={8}
-            shadow-camera-top={8}
-            shadow-camera-bottom={-8}
-          />
-          <directionalLight position={[-4, 3, -5]} intensity={0.35} />
-          <directionalLight position={[0, -2, -8]} intensity={0.18} />
-
-          {environment && (
-            <Suspense fallback={null}>
-              <Environment preset={environment} />
-            </Suspense>
-          )}
-
-          <Suspense fallback={null}>{children}</Suspense>
-
-          {groundY !== null && (
-            <ContactShadows
-              position={[0, groundY, 0]}
-              opacity={0.4}
-              scale={20}
-              blur={2.5}
-              far={4}
-              color="#0F172A"
-            />
-          )}
-
-          <OrbitControls
-            enablePan={enablePan}
-            minDistance={minDistance}
-            maxDistance={maxDistance}
-            enableDamping
-            dampingFactor={0.08}
-          />
-
-          {postFx && (
-            <EffectComposer multisampling={0}>
-              <Bloom intensity={0.45} luminanceThreshold={0.85} luminanceSmoothing={0.5} mipmapBlur />
-              <Vignette eskil={false} offset={0.15} darkness={0.4} />
-            </EffectComposer>
-          )}
-        </XR>
+        {enableAR ? <XR>{sceneContent}</XR> : sceneContent}
       </Canvas>
     </div>
   );
