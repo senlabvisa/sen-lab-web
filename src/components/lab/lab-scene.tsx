@@ -4,18 +4,18 @@ import { ReactNode, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Environment, OrbitControls } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
+import { ARButton, XR } from '@react-three/xr';
 import { ACESFilmicToneMapping } from 'three';
 
 /**
  * <LabScene> — wrapper Canvas R3F générique partagé par les TPs Lab Premium.
  *
- * Améliorations (Phase 1) :
- *  - ACES Filmic tone mapping (couleurs naturelles)
- *  - Environment HDR (préset "city" par défaut, drei) → reflets + ambiance
- *  - ContactShadows (ombre soft au sol, optionnel)
- *  - 3-point lighting (key + fill + rim) au lieu de 2 directionalLights
- *  - shadows activées
- *  - dpr [1, 2] pour qualité retina
+ * Améliorations actives :
+ *  - ACES Filmic tone mapping
+ *  - Environment HDR (drei preset)
+ *  - 3-point lighting + ContactShadows + shadows
+ *  - Post-processing (bloom + vignette) opt-out
+ *  - Mode AR via @react-three/xr (opt-in via enableAR)
  *
  * Les fichiers qui importent ce composant doivent être chargés via
  * `next/dynamic({ ssr: false })` pour garder Three.js hors du bundle initial.
@@ -23,26 +23,18 @@ import { ACESFilmicToneMapping } from 'three';
 
 export type LabSceneProps = {
   children: ReactNode;
-  /** Couleur de fond du Canvas. Par défaut : violet pâle Sen Lab. */
   background?: string;
-  /** Position initiale de la caméra en [x, y, z]. */
   cameraPosition?: [number, number, number];
-  /** Champ de vision en degrés. */
   fov?: number;
-  /** Distance min en orbite. */
   minDistance?: number;
-  /** Distance max en orbite. */
   maxDistance?: number;
-  /** Activer le pan (déplacement caméra). */
   enablePan?: boolean;
-  /** Hook utile : signale une interaction utilisateur. */
   onInteract?: () => void;
-  /** Préréglage d'environnement HDR (drei). 'city', 'sunset', 'studio', 'park', 'night', 'warehouse'. */
   environment?: 'city' | 'sunset' | 'studio' | 'park' | 'night' | 'warehouse' | 'dawn' | 'apartment' | null;
-  /** Position Y du sol pour les ContactShadows. null = désactivé. */
   groundY?: number | null;
-  /** Activer post-processing (bloom + vignette). true par défaut, false sur mobile lent. */
   postFx?: boolean;
+  /** Activer le mode AR (WebXR). Affiche un bouton "AR" si supporté. */
+  enableAR?: boolean;
 };
 
 export function LabScene({
@@ -57,79 +49,83 @@ export function LabScene({
   environment = 'city',
   groundY = -1.5,
   postFx = true,
+  enableAR = true,
 }: LabSceneProps) {
   return (
-    <Canvas
-      camera={{ position: cameraPosition, fov }}
-      dpr={[1, 2]}
-      shadows
-      onPointerDown={onInteract}
-      onWheel={onInteract}
-      gl={{
-        antialias: true,
-        powerPreference: 'high-performance',
-        toneMapping: ACESFilmicToneMapping,
-        toneMappingExposure: 1.05,
-      }}
-    >
-      <color attach="background" args={[background]} />
-
-      {/* 3-point lighting */}
-      <ambientLight intensity={0.35} />
-      {/* Key light (principale, chaude) */}
-      <directionalLight
-        position={[5, 8, 6]}
-        intensity={1.1}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-camera-far={20}
-        shadow-camera-left={-8}
-        shadow-camera-right={8}
-        shadow-camera-top={8}
-        shadow-camera-bottom={-8}
-      />
-      {/* Fill light (secondaire, douce, opposée) */}
-      <directionalLight position={[-4, 3, -5]} intensity={0.35} />
-      {/* Rim light (contour) */}
-      <directionalLight position={[0, -2, -8]} intensity={0.18} />
-
-      {/* Environment HDR pour reflets et ambiance — drei built-in presets */}
-      {environment && (
-        <Suspense fallback={null}>
-          <Environment preset={environment} />
-        </Suspense>
-      )}
-
-      <Suspense fallback={null}>{children}</Suspense>
-
-      {/* Ombres soft au sol */}
-      {groundY !== null && (
-        <ContactShadows
-          position={[0, groundY, 0]}
-          opacity={0.4}
-          scale={20}
-          blur={2.5}
-          far={4}
-          color="#0F172A"
+    <div className="relative h-full w-full">
+      {enableAR && (
+        <ARButton
+          className="absolute right-3 top-3 z-10 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white shadow-soft hover:bg-violet-700"
+          sessionInit={{ optionalFeatures: ['local-floor', 'hand-tracking'] }}
         />
       )}
+      <Canvas
+        camera={{ position: cameraPosition, fov }}
+        dpr={[1, 2]}
+        shadows
+        onPointerDown={onInteract}
+        onWheel={onInteract}
+        gl={{
+          antialias: true,
+          powerPreference: 'high-performance',
+          toneMapping: ACESFilmicToneMapping,
+          toneMappingExposure: 1.05,
+        }}
+      >
+        <color attach="background" args={[background]} />
 
-      <OrbitControls
-        enablePan={enablePan}
-        minDistance={minDistance}
-        maxDistance={maxDistance}
-        enableDamping
-        dampingFactor={0.08}
-      />
+        <XR>
+          <ambientLight intensity={0.35} />
+          <directionalLight
+            position={[5, 8, 6]}
+            intensity={1.1}
+            castShadow
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
+            shadow-camera-far={20}
+            shadow-camera-left={-8}
+            shadow-camera-right={8}
+            shadow-camera-top={8}
+            shadow-camera-bottom={-8}
+          />
+          <directionalLight position={[-4, 3, -5]} intensity={0.35} />
+          <directionalLight position={[0, -2, -8]} intensity={0.18} />
 
-      {/* Post-processing : bloom subtil + vignette douce */}
-      {postFx && (
-        <EffectComposer multisampling={0}>
-          <Bloom intensity={0.45} luminanceThreshold={0.85} luminanceSmoothing={0.5} mipmapBlur />
-          <Vignette eskil={false} offset={0.15} darkness={0.4} />
-        </EffectComposer>
-      )}
-    </Canvas>
+          {environment && (
+            <Suspense fallback={null}>
+              <Environment preset={environment} />
+            </Suspense>
+          )}
+
+          <Suspense fallback={null}>{children}</Suspense>
+
+          {groundY !== null && (
+            <ContactShadows
+              position={[0, groundY, 0]}
+              opacity={0.4}
+              scale={20}
+              blur={2.5}
+              far={4}
+              color="#0F172A"
+            />
+          )}
+
+          <OrbitControls
+            enablePan={enablePan}
+            minDistance={minDistance}
+            maxDistance={maxDistance}
+            enableDamping
+            dampingFactor={0.08}
+          />
+
+          {postFx && (
+            <EffectComposer multisampling={0}>
+              <Bloom intensity={0.45} luminanceThreshold={0.85} luminanceSmoothing={0.5} mipmapBlur />
+              <Vignette eskil={false} offset={0.15} darkness={0.4} />
+            </EffectComposer>
+          )}
+        </XR>
+      </Canvas>
+    </div>
   );
 }

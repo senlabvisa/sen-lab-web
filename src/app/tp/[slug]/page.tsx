@@ -45,13 +45,21 @@ import {
   startAttemptOfflineFirst,
 } from '@/lib/sync-queue';
 import { getModule } from '@/simulations/registry';
+import { CollabPanel } from '@/components/lab/collab-panel';
 
 export default function TpPage({ params }: { params: { slug: string } }) {
   return (
     <LabShell allowedRoles={['student']}>
       <TpContent slug={params.slug} />
+      <CollabPanelHook slug={params.slug} />
     </LabShell>
   );
+}
+
+function CollabPanelHook({ slug }: { slug: string }) {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <CollabPanel slug={slug} hostId={user.id} />;
 }
 
 type Phase = 'idle' | 'running' | 'completed' | 'error';

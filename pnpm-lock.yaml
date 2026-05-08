@@ -20,6 +20,9 @@ importers:
       '@react-three/postprocessing':
         specifier: ^2.16.0
         version: 2.19.1(@react-three/fiber@8.18.0(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.184.0))(@types/three@0.184.0)(react@18.3.1)(three@0.184.0)
+      '@react-three/xr':
+        specifier: ^5.7.1
+        version: 5.7.1(@react-three/fiber@8.18.0(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.184.0))(react@18.3.1)(three@0.184.0)
       '@senlabvisa/shared-types':
         specifier: file:../sen-lab-shared-types
         version: file:../sen-lab-shared-types
@@ -978,6 +981,13 @@ packages:
       '@react-three/fiber': ^8.0
       react: ^18.0
       three: '>= 0.138.0'
+
+  '@react-three/xr@5.7.1':
+    resolution: {integrity: sha512-GaRUSA+lE8VJF/NrXq7QQByZ4UGHbQQ4rs3QCphZs9fVidK86hGrMOQ0kL79gZc5pa3V5uFGlOhNcUdsTYE3Bg==}
+    peerDependencies:
+      '@react-three/fiber': '>=8.0.0'
+      react: '>=18.0'
+      three: '>=0.141'
 
   '@rollup/plugin-babel@5.3.1':
     resolution: {integrity: sha512-WFfdLWU/xVWKeRQnKmIAQULUI7Il0gZnBIH/ZFO069wYIfPu+8zrfp/KMW0atmELoRDq8FbiP3VCss9MhCut7Q==}
@@ -4817,6 +4827,15 @@ snapshots:
       three-stdlib: 2.36.1(three@0.184.0)
     transitivePeerDependencies:
       - '@types/three'
+
+  '@react-three/xr@5.7.1(@react-three/fiber@8.18.0(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.184.0))(react@18.3.1)(three@0.184.0)':
+    dependencies:
+      '@react-three/fiber': 8.18.0(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.184.0)
+      '@types/webxr': 0.5.24
+      react: 18.3.1
+      three: 0.184.0
+      three-stdlib: 2.36.1(three@0.184.0)
+      zustand: 3.7.2(react@18.3.1)
 
   '@rollup/plugin-babel@5.3.1(@babel/core@7.29.0)(rollup@2.80.0)':
     dependencies:
