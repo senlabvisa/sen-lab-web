@@ -42,6 +42,17 @@ const BADGE_LABELS: Record<BadgeKind, { label: string; desc: string; emoji: stri
   excellence: { label: 'Excellence', desc: 'Score ≥ 90', emoji: '⭐' },
   polyvalent: { label: 'Polyvalent', desc: '2 matières', emoji: '🌈' },
   perseverant: { label: 'Persévérant', desc: '5+ tentatives', emoji: '💪' },
+  // === Phase 3 : badges étendus ===
+  'maitre-maths': { label: 'Maître des Maths', desc: '5 TPs Maths', emoji: '∑' },
+  'maitre-pc': { label: 'Maître de PC', desc: '5 TPs Physique-Chimie', emoji: '⚛' },
+  'maitre-svt': { label: 'Maître de SVT', desc: '5 TPs SVT', emoji: '🌱' },
+  'expert-college': { label: 'Expert Collège', desc: '10 TPs collège', emoji: '🎓' },
+  'expert-lycee': { label: 'Expert Lycée', desc: '10 TPs lycée', emoji: '🏛' },
+  legende: { label: 'Légende', desc: '50 TPs terminés', emoji: '👑' },
+  parfait: { label: 'Parfait', desc: '5 scores 100/100', emoji: '💯' },
+  bachelier: { label: 'Bachelier', desc: '5 TPs Terminale', emoji: '🎓' },
+  'bfem-pret': { label: 'BFEM prêt', desc: '5 TPs 3ème', emoji: '📜' },
+  decouvreur: { label: 'Découvreur', desc: 'Tous les niveaux explorés', emoji: '🗺' },
 };
 
 const FAKE_PRODUCTIVITY = [

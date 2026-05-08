@@ -211,6 +211,7 @@ function TpContent({ slug }: { slug: string }) {
         formatTime={formatTime}
         onReplay={reset}
         onBack={() => router.push('/student/tps' as Route)}
+        user={user}
       />
     );
   }
@@ -554,6 +555,7 @@ function CompletedView({
   formatTime,
   onReplay,
   onBack,
+  user,
 }: {
   sim: SimulationDto | null;
   attempt: AttemptDto | null;
@@ -563,6 +565,7 @@ function CompletedView({
   formatTime: (s: number) => string;
   onReplay: () => void;
   onBack: () => void;
+  user: { id: string; identifier: string; fullName: string; role: string } | null;
 }) {
   return (
     <PageTransition className="mx-auto w-full max-w-2xl">
@@ -643,6 +646,21 @@ function CompletedView({
               <RotateCcw className="h-4 w-4" />
               Recommencer
             </motion.button>
+            {!isLocalAttempt && attempt && sim && user && (
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                type="button"
+                onClick={async () => {
+                  const { generateAttemptReport } = await import('@/lib/pdf-report');
+                  generateAttemptReport(attempt, sim, user);
+                }}
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white shadow-soft transition hover:bg-emerald-700"
+                title="Télécharger le rapport en PDF"
+              >
+                📄 Télécharger PDF
+              </motion.button>
+            )}
           </motion.div>
         </div>
       </PanelCard>

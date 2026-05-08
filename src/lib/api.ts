@@ -304,7 +304,22 @@ export const api = {
   },
 };
 
-export type Badge = 'premier-pas' | 'trio' | 'excellence' | 'polyvalent' | 'perseverant';
+export type Badge =
+  | 'premier-pas'
+  | 'trio'
+  | 'excellence'
+  | 'polyvalent'
+  | 'perseverant'
+  | 'maitre-maths'
+  | 'maitre-pc'
+  | 'maitre-svt'
+  | 'expert-college'
+  | 'expert-lycee'
+  | 'legende'
+  | 'parfait'
+  | 'bachelier'
+  | 'bfem-pret'
+  | 'decouvreur';
 
 export type UserStatsDto = {
   userId: string;
