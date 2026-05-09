@@ -164,6 +164,15 @@ export default function LoginPage() {
             <p className="mt-6 text-center text-xs text-night-400">
               Identifiant fourni par ton école.
             </p>
+            <div className="mt-4 border-t border-night-100 pt-4 text-center">
+              <p className="text-xs text-night-500">Pas encore de compte ?</p>
+              <Link
+                href="/register"
+                className="mt-1 inline-block text-sm font-semibold text-lab-700 hover:underline"
+              >
+                Créer un compte démo →
+              </Link>
+            </div>
           </div>
         </motion.div>
       </motion.div>

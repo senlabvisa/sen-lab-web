@@ -66,6 +66,16 @@ export const api = {
   login: (dto: LoginDto) =>
     request<AuthTokensDto>('/auth/login', { method: 'POST', body: JSON.stringify(dto) }),
 
+  /**
+   * Inscription publique (mode démo) — crée un compte student et retourne
+   * le user ; le login automatique doit être fait derrière par l'appelant.
+   */
+  register: (input: { fullName: string; password: string }) =>
+    request<UserDto>('/users/register', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
   me: (token: string) =>
     request<UserDto>('/users/me', { method: 'GET', headers: auth(token) }),
 
