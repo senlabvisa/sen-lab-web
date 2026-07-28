@@ -1,121 +1,99 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowRight, CheckCircle2, Sigma, Zap } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { ArrowRight, CheckCircle2, LineChart, Sigma, Zap } from 'lucide-react';
 import type { SimulationModuleProps } from '@senlabvisa/shared-types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FormulaInput, parseFormula } from '@/components/lab/formula-input';
-import { MathPlot, type PlotCurve, type PlotPoint } from '@/components/lab/math-plot';
+import { NarrationButton } from '@/components/lab/narration-button';
+import { QcmStep } from '@/components/lab/qcm-step';
 
 /**
- * TP — Fonctions affines, tarif Senelec (3ème, Maths)
+ * TP — Fonctions affines, tarif Senelec (3ème, Maths).
  *
- * Démarche : l'élève joue librement avec une formule y = ax + b dans un éditeur
- * + grapheur en split-view, puis résout deux mini-problèmes basés sur la facture
- * d'électricité Senelec (abonnement mensuel + conso × prix kWh).
+ * Flow Lab Premium : amorce → hypothèse → manipulation 3D (droite y = ax + b
+ * dans un repère réel) → application (facture Senelec) → QCM → bilan.
+ * Contexte : la facture d'électricité Senelec = abonnement fixe (b) +
+ * consommation × prix du kWh (a).
  */
 
-type Step = 'intro' | 'sandbox' | 'enigme' | 'application' | 'done';
+const AffineScene = dynamic(() => import('./affine-scene'), {
+  ssr: false,
+  loading: () => (
+    <div className="grid h-full min-h-[320px] place-items-center bg-sky-50 text-sm text-ink/50">Chargement de la scène 3D…</div>
+  ),
+});
 
-// Énigme : M. Diop a payé 5500 F pour 50 kWh, et 9000 F pour 120 kWh.
-// → b (abonnement) = 3000, a (prix kWh) = 50 → y = 50x + 3000
-const ENIG_X1 = 50;
-const ENIG_Y1 = 5500;
-const ENIG_X2 = 120;
-const ENIG_Y2 = 9000;
-const ENIG_A_TRUE = (ENIG_Y2 - ENIG_Y1) / (ENIG_X2 - ENIG_X1); // 50
-const ENIG_B_TRUE = ENIG_Y1 - ENIG_A_TRUE * ENIG_X1; // 3000
+type Step = 'intro' | 'hypo' | 'manip' | 'application' | 'qcm' | 'done';
+type HypoRep = 'monte' | 'penche' | 'rien' | null;
 
-const APP_X = 250;
-const APP_Y_TRUE = ENIG_A_TRUE * APP_X + ENIG_B_TRUE; // 15500
+// Tarif Senelec d'exemple : 50 F/kWh + 3000 F d'abonnement.
+const PRIX_KWH = 50;
+const ABONNEMENT = 3000;
+const APP_X = 250; // kWh
+const APP_TRUE = PRIX_KWH * APP_X + ABONNEMENT; // 15 500 F
 
-const SANDBOX_COLORS = ['#7C3AED', '#0EA5E9', '#F59E0B'];
+const INTRO =
+  "Quand ta famille reçoit la facture Senelec, elle paie deux choses : un abonnement fixe chaque mois, " +
+  "et la consommation en kilowattheures. Si x est le nombre de kWh et y le montant total, alors y = a fois x plus b. " +
+  "Le a est le prix d'un kWh, le b est l'abonnement. C'est une fonction affine : tu vas l'explorer dans un vrai repère.";
 
-type SandboxSlot = { expr: string };
+const CONCLUSION =
+  "Bravo ! Dans y = a x + b, le coefficient a est la pente : il dit de combien y monte quand x augmente de 1 (ici le prix d'un kWh). " +
+  "Le nombre b est l'ordonnée à l'origine : la valeur de y quand x vaut 0 (ici l'abonnement payé même sans consommer).";
 
 export function FonctionsAffines3eme({ onComplete, busy }: SimulationModuleProps) {
   const [step, setStep] = useState<Step>('intro');
+  const [a, setA] = useState(0.5);
+  const [b, setB] = useState(1);
+  const [tried, setTried] = useState<Set<string>>(new Set(['0.5|1']));
 
-  // Sandbox libre
-  const [slots, setSlots] = useState<SandboxSlot[]>([
-    { expr: '50*x + 3000' },
-    { expr: '' },
-    { expr: '' },
-  ]);
-  const distinctTried = useMemo(() => {
-    const set = new Set<string>();
-    slots.forEach((s) => {
-      const r = parseFormula(s.expr);
-      if (r.fn) set.add(s.expr.trim());
-    });
-    return set.size;
-  }, [slots]);
-
-  // Énigme
-  const [enigExpr, setEnigExpr] = useState('');
-  const enigParsed = useMemo(() => parseFormula(enigExpr), [enigExpr]);
-  const enigErr = useMemo(() => {
-    if (!enigParsed.fn) return null;
-    try {
-      const e1 = Math.abs(enigParsed.fn(ENIG_X1) - ENIG_Y1) / ENIG_Y1;
-      const e2 = Math.abs(enigParsed.fn(ENIG_X2) - ENIG_Y2) / ENIG_Y2;
-      return Math.max(e1, e2);
-    } catch {
-      return null;
-    }
-  }, [enigParsed]);
-
-  // Application
+  const [hypo, setHypo] = useState<HypoRep>(null);
   const [appAnswer, setAppAnswer] = useState('');
-  const appAnswerNum = Number(appAnswer.replace(',', '.'));
-  const appValid = !Number.isNaN(appAnswerNum) && appAnswerNum > 0;
-  const appErr = appValid ? Math.abs(appAnswerNum - APP_Y_TRUE) / APP_Y_TRUE : 1;
+  const [qA, setQA] = useState<string | null>(null);
+  const [qB, setQB] = useState<string | null>(null);
+  const [qPente, setQPente] = useState<string | null>(null);
+
+  function explore(nextA: number, nextB: number) {
+    setA(nextA);
+    setB(nextB);
+    setTried((prev) => new Set(prev).add(`${nextA}|${nextB}`));
+  }
+
+  const appNum = Number(appAnswer.replace(',', '.').replace(/\s/g, ''));
+  const appValid = !Number.isNaN(appNum) && appNum > 0;
+  const appErr = appValid ? Math.abs(appNum - APP_TRUE) / APP_TRUE : 1;
 
   const score = useMemo(() => {
     let s = 0;
-    if (distinctTried >= 3) s += 15;
-    else if (distinctTried >= 2) s += 8;
-    if (enigErr !== null) {
-      if (enigErr < 0.005) s += 50;
-      else if (enigErr < 0.05) s += 35;
-      else if (enigErr < 0.15) s += 18;
-    }
+    if (tried.size >= 3) s += 20;
+    else if (tried.size >= 2) s += 12;
+    if (hypo === 'monte') s += 10;
     if (appValid) {
-      if (appErr < 0.005) s += 35;
-      else if (appErr < 0.05) s += 22;
+      if (appErr < 0.005) s += 30;
+      else if (appErr < 0.05) s += 20;
       else if (appErr < 0.15) s += 10;
     }
+    if (qA === 'prix') s += 15;
+    if (qB === 'abo') s += 15;
+    if (qPente === 'pentue') s += 10;
     return Math.max(0, Math.min(100, s));
-  }, [distinctTried, enigErr, appValid, appErr]);
+  }, [tried, hypo, appValid, appErr, qA, qB, qPente]);
 
   async function handleValidate() {
     await onComplete(
       {
         shell: 'fonctions-affines-3eme',
-        version: '1.0',
+        version: '2.0',
         steps: {
-          sandbox: {
-            triedCount: distinctTried,
-            formulas: slots.map((s) => s.expr).filter(Boolean),
-          },
-          enigme: {
-            input: enigExpr,
-            relativeError: enigErr,
-            target: { a: ENIG_A_TRUE, b: ENIG_B_TRUE },
-            points: [
-              { x: ENIG_X1, y: ENIG_Y1 },
-              { x: ENIG_X2, y: ENIG_Y2 },
-            ],
-          },
-          application: {
-            x: APP_X,
-            answer: appValid ? appAnswerNum : null,
-            target: APP_Y_TRUE,
-          },
+          explore: { count: tried.size, last: { a, b } },
+          hypothesis: hypo,
+          application: { x: APP_X, answer: appValid ? appNum : null, target: APP_TRUE },
+          qcm: { qA, qB, qPente },
         },
       },
       score,
@@ -132,198 +110,121 @@ export function FonctionsAffines3eme({ onComplete, busy }: SimulationModuleProps
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-violet-700 shadow-soft ring-1 ring-violet-100">
                 <Zap className="h-5 w-5" />
               </span>
-              Tarif Senelec — Contexte
+              La facture Senelec
             </CardTitle>
             <Badge tone="maths">Maths · 3ème</Badge>
           </CardHeader>
           <div className="space-y-3 text-ink/80">
             <p>
-              Quand ta famille reçoit la facture <strong>Senelec</strong>, elle paye deux choses :
-              un <strong>abonnement mensuel</strong> fixe et la <strong>consommation</strong> en
-              kilowattheures (kWh).
-            </p>
-            <p>
-              Si on note <span className="font-mono">x</span> le nombre de kWh consommés et{' '}
-              <span className="font-mono">y</span> le montant total, alors :
+              Sur la facture <strong>Senelec</strong>, on paie un <strong>abonnement fixe</strong> chaque mois, plus la{' '}
+              <strong>consommation</strong> en kilowattheures (kWh).
             </p>
             <p className="rounded-xl bg-white/70 p-3 text-center font-mono text-base font-semibold text-violet-700 ring-1 ring-violet-100">
               y = a · x + b
             </p>
-            <p className="text-sm text-ink/70">
-              <strong>a</strong> = prix d&apos;un kWh (en F CFA) · <strong>b</strong> = abonnement
-              fixe. C&apos;est une <strong>fonction affine</strong>. Tu vas l&apos;explorer dans un
-              vrai labo math.
+            <p className="rounded-xl bg-violet-50 p-3 text-sm text-violet-900 ring-1 ring-violet-100">
+              <strong>x</strong> = kWh consommés · <strong>a</strong> = prix d&apos;un kWh · <strong>b</strong> = abonnement fixe.
+              <br />
+              <strong>Objectif :</strong> comprendre le rôle de <em>a</em> (la pente) et de <em>b</em> (l&apos;ordonnée à l&apos;origine).
             </p>
+            <NarrationButton text={INTRO} label="Écouter l'introduction" />
           </div>
           <div className="mt-5 flex justify-end">
-            <Button variant="gradient" onClick={() => setStep('sandbox')}>
-              Ouvrir le labo
-              <ArrowRight className="h-4 w-4" />
+            <Button variant="gradient" onClick={() => setStep('hypo')}>
+              Commencer <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </Card>
       )}
 
-      {step === 'sandbox' && (
+      {step === 'hypo' && (
         <Card padding="lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sigma className="h-5 w-5 text-violet-700" />
-              Étape 1 — Labo libre
+              <Sigma className="h-5 w-5 text-violet-700" /> Étape 1 — Ton hypothèse
             </CardTitle>
-            <Badge tone="science">1/3</Badge>
+            <Badge tone="maths">1/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            Saisis tes formules à gauche, observe le graphe à droite. Essaie au moins{' '}
-            <strong>3 formules différentes</strong> pour comprendre le rôle de <em>a</em> (la
-            pente) et <em>b</em> (l&apos;ordonnée à l&apos;origine).
+            Avant de manipuler : si on <strong>augmente l&apos;abonnement b</strong> (en gardant le prix du kWh fixe), que fait la droite
+            dans le repère ?
           </p>
-
-          <div className="grid gap-4 lg:grid-cols-[minmax(260px,2fr)_3fr]">
-            <div className="space-y-3">
-              {slots.map((slot, i) => (
-                <FormulaInput
-                  key={i}
-                  value={slot.expr}
-                  onChange={(v) =>
-                    setSlots((prev) => prev.map((s, j) => (i === j ? { expr: v } : s)))
-                  }
-                  label={`Formule ${i + 1}`}
-                  placeholder={i === 0 ? '50*x + 3000' : 'ex : 75*x + 5000'}
-                  helpText={i === 0 ? 'Tarif Senelec exemple : 50 F/kWh + 3000 F d’abonnement' : undefined}
-                />
-              ))}
-              <div className="rounded-xl bg-violet-50 p-3 text-xs text-ink/70 ring-1 ring-violet-100">
-                <strong>Astuce :</strong> tu peux écrire <code className="font-mono">2x+1</code>,{' '}
-                <code className="font-mono">-0.5*x + 4</code>, ou utiliser{' '}
-                <code className="font-mono">x^2</code>, <code className="font-mono">sin(x)</code>{' '}
-                (pour plus tard).
-              </div>
-              <div className="flex items-center justify-between text-xs text-ink/60">
-                <span>Formules valides essayées : {distinctTried}</span>
-                <Badge tone={distinctTried >= 3 ? 'action' : 'neutral'} size="sm">
-                  {distinctTried >= 3 ? 'Bravo, prêt' : `Encore ${Math.max(0, 3 - distinctTried)}`}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-gradient-to-br from-violet-50 via-white to-science-50 p-3 ring-1 ring-violet-100">
-              <MathPlot
-                xMin={0}
-                xMax={300}
-                yMin={0}
-                yMax={20000}
-                xLabel="kWh"
-                yLabel="F CFA"
-                step={3}
-                curves={slots
-                  .map((s, i) => ({ s, i }))
-                  .map(({ s, i }) => {
-                    const r = parseFormula(s.expr);
-                    return r.fn
-                      ? ({
-                          fn: r.fn,
-                          color: SANDBOX_COLORS[i],
-                          label: `Formule ${i + 1}`,
-                        } as PlotCurve)
-                      : null;
-                  })
-                  .filter((c): c is PlotCurve => c !== null)}
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex justify-end">
-            <Button variant="gradient" disabled={distinctTried < 2} onClick={() => setStep('enigme')}>
-              Passer à l’énigme
-              <ArrowRight className="h-4 w-4" />
+          <QcmStep
+            label="Quand b augmente, la droite…"
+            tone="violet"
+            options={[
+              { key: 'monte', label: 'Se décale vers le haut (sans changer de pente)' },
+              { key: 'penche', label: 'Penche davantage' },
+              { key: 'rien', label: 'Ne bouge pas' },
+            ]}
+            value={hypo}
+            onChange={(v) => setHypo(v as HypoRep)}
+          />
+          <div className="mt-5 flex justify-end">
+            <Button variant="gradient" disabled={!hypo} onClick={() => setStep('manip')}>
+              Vérifier <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </Card>
       )}
 
-      {step === 'enigme' && (
+      {step === 'manip' && (
         <Card padding="lg">
           <CardHeader>
-            <CardTitle>Étape 2 — L’énigme de M. Diop</CardTitle>
-            <Badge tone="science">2/3</Badge>
+            <CardTitle className="flex items-center gap-2">
+              <LineChart className="h-5 w-5 text-violet-700" /> Étape 2 — Explore la droite
+            </CardTitle>
+            <Badge tone="maths">2/4</Badge>
           </CardHeader>
-          <div className="mb-3 rounded-xl bg-violet-50 p-3 text-sm text-ink/80 ring-1 ring-violet-100">
-            <strong>M. Diop</strong> habite à Pikine. Il observe deux factures Senelec :
-            <ul className="mt-1.5 list-disc pl-5">
-              <li>
-                pour <strong>{ENIG_X1} kWh</strong>, il paye <strong>{ENIG_Y1} F CFA</strong>
-              </li>
-              <li>
-                pour <strong>{ENIG_X2} kWh</strong>, il paye <strong>{ENIG_Y2} F CFA</strong>
-              </li>
-            </ul>
-            <p className="mt-2">Trouve la formule de sa facture en fonction des kWh consommés.</p>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[minmax(260px,2fr)_3fr]">
-            <div className="space-y-3">
-              <FormulaInput
-                value={enigExpr}
-                onChange={setEnigExpr}
-                label="Ta formule"
-                placeholder="ex : 60*x + 2000"
-              />
-              {enigParsed.fn && enigErr !== null && (
-                <div
-                  className={
-                    'rounded-xl p-3 text-xs ring-1 ' +
-                    (enigErr < 0.005
-                      ? 'bg-action-50 text-action-700 ring-action-100'
-                      : enigErr < 0.05
-                        ? 'bg-violet-50 text-violet-700 ring-violet-100'
-                        : 'bg-alert-50 text-alert-700 ring-alert-100')
-                  }
-                >
-                  Au point ({ENIG_X1}, {ENIG_Y1}) ta formule donne{' '}
-                  <strong>{Math.round(enigParsed.fn(ENIG_X1))}</strong> F CFA.
-                  <br />
-                  Au point ({ENIG_X2}, {ENIG_Y2}) elle donne{' '}
-                  <strong>{Math.round(enigParsed.fn(ENIG_X2))}</strong> F CFA.
-                  <br />
-                  Erreur max : <strong>{(enigErr * 100).toFixed(1)} %</strong>
-                  {enigErr < 0.005 && ' — parfait !'}
-                </div>
-              )}
+          <p className="mb-3 text-sm text-ink/70">
+            Bouge <strong>a</strong> (la pente) et <strong>b</strong> (l&apos;ordonnée à l&apos;origine). Observe : le point violet (0 ; b)
+            est là où la droite coupe l&apos;axe vertical ; le triangle vert/orange montre que si tu avances de +1, tu montes de a.
+          </p>
+          <div className="overflow-hidden rounded-2xl ring-1 ring-violet-100">
+            <div className="aspect-[4/3] w-full">
+              <AffineScene a={a} b={b} />
             </div>
-
-            <div className="rounded-2xl bg-gradient-to-br from-violet-50 via-white to-science-50 p-3 ring-1 ring-violet-100">
-              <MathPlot
-                xMin={0}
-                xMax={150}
-                yMin={0}
-                yMax={12000}
-                xLabel="kWh"
-                yLabel="F CFA"
-                step={1.5}
-                curves={
-                  enigParsed.fn
-                    ? [{ fn: enigParsed.fn, color: '#7C3AED', label: 'Ta formule' }]
-                    : []
-                }
-                points={[
-                  { x: ENIG_X1, y: ENIG_Y1, color: '#059669', label: `(${ENIG_X1}, ${ENIG_Y1})` },
-                  { x: ENIG_X2, y: ENIG_Y2, color: '#059669', label: `(${ENIG_X2}, ${ENIG_Y2})` },
-                ]}
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <div className="mb-1 flex justify-between text-xs">
+                <Label htmlFor="a">Pente a</Label>
+                <span className="font-mono text-violet-700">{a}</span>
+              </div>
+              <input
+                id="a"
+                type="range"
+                min={-2}
+                max={2}
+                step={0.5}
+                value={a}
+                onChange={(e) => explore(Number(e.target.value), b)}
+                className="slider-lab w-full"
+              />
+            </div>
+            <div>
+              <div className="mb-1 flex justify-between text-xs">
+                <Label htmlFor="b">Ordonnée à l&apos;origine b</Label>
+                <span className="font-mono text-violet-700">{b}</span>
+              </div>
+              <input
+                id="b"
+                type="range"
+                min={-2}
+                max={2}
+                step={0.5}
+                value={b}
+                onChange={(e) => explore(a, Number(e.target.value))}
+                className="slider-lab w-full"
               />
             </div>
           </div>
-
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setStep('sandbox')}>
-              Revoir le labo
-            </Button>
-            <Button
-              variant="gradient"
-              disabled={enigErr === null || enigErr > 0.5}
-              onClick={() => setStep('application')}
-            >
-              Appliquer
+          <div className="mt-3 rounded-xl bg-violet-50 p-3 text-xs text-ink/70 ring-1 ring-violet-100">
+            <strong>Observe :</strong> b déplace la droite verticalement (translation), a change son inclinaison. Combinaisons essayées : {tried.size}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button variant="gradient" disabled={tried.size < 3} onClick={() => setStep('application')}>
+              {tried.size < 3 ? `Essaie ${3 - tried.size} réglage(s) de plus` : 'Appliquer à la facture'}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -334,36 +235,91 @@ export function FonctionsAffines3eme({ onComplete, busy }: SimulationModuleProps
         <Card padding="lg">
           <CardHeader>
             <CardTitle>Étape 3 — Calcule la facture</CardTitle>
-            <Badge tone="science">3/3</Badge>
+            <Badge tone="maths">3/4</Badge>
           </CardHeader>
-          <p className="mb-4 text-ink/80">
-            Tu viens de trouver le tarif de M. Diop. Selon ta formule (ou la vraie formule{' '}
-            <span className="font-mono">y = {ENIG_A_TRUE}·x + {ENIG_B_TRUE}</span>), combien
-            paiera-t-il pour <strong>{APP_X} kWh</strong> ?
-          </p>
-
+          <div className="mb-4 rounded-xl bg-violet-50 p-3 text-sm text-ink/80 ring-1 ring-violet-100">
+            Chez <strong>M. Diop</strong> à Pikine, le tarif Senelec est{' '}
+            <span className="font-mono">y = {PRIX_KWH}·x + {ABONNEMENT}</span> (prix du kWh = {PRIX_KWH} F, abonnement = {ABONNEMENT} F).
+            <p className="mt-2">
+              Combien paiera-t-il pour <strong>{APP_X} kWh</strong> consommés ce mois-ci ?
+            </p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="appAns">Montant en F CFA</Label>
-            <Input
-              id="appAns"
-              inputMode="decimal"
-              value={appAnswer}
-              onChange={(e) => setAppAnswer(e.target.value)}
-              placeholder={`ex : ${APP_Y_TRUE}`}
+            <Input id="appAns" inputMode="numeric" value={appAnswer} onChange={(e) => setAppAnswer(e.target.value)} placeholder="ex : 12000" />
+            {appValid && (
+              <div
+                className={
+                  'rounded-xl p-3 text-xs ring-1 ' +
+                  (appErr < 0.005
+                    ? 'bg-action-50 text-action-700 ring-action-100'
+                    : appErr < 0.15
+                      ? 'bg-amber-50 text-amber-700 ring-amber-100'
+                      : 'bg-alert-50 text-alert-700 ring-alert-100')
+                }
+              >
+                {appErr < 0.005 ? 'Parfait — c’est exactement ça !' : `Indice : calcule ${PRIX_KWH} × ${APP_X} puis ajoute ${ABONNEMENT}.`}
+              </div>
+            )}
+          </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setStep('manip')}>
+              Revoir la droite
+            </Button>
+            <Button variant="gradient" disabled={!appValid} onClick={() => setStep('qcm')}>
+              Conclure <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {step === 'qcm' && (
+        <Card padding="lg">
+          <CardHeader>
+            <CardTitle>Étape 4 — Valide ta compréhension</CardTitle>
+            <Badge tone="maths">4/4</Badge>
+          </CardHeader>
+          <div className="space-y-5">
+            <QcmStep
+              label="Pour la facture Senelec, le coefficient a (la pente) représente…"
+              tone="violet"
+              options={[
+                { key: 'prix', label: "Le prix d'un kWh" },
+                { key: 'abo', label: "L'abonnement fixe" },
+                { key: 'total', label: 'Le montant total' },
+              ]}
+              value={qA}
+              onChange={setQA}
+            />
+            <QcmStep
+              label="L'ordonnée à l'origine b (valeur de y quand x = 0) représente…"
+              tone="violet"
+              options={[
+                { key: 'abo', label: "L'abonnement payé même à 0 kWh" },
+                { key: 'prix', label: "Le prix d'un kWh" },
+                { key: 'kwh', label: 'Le nombre de kWh' },
+              ]}
+              value={qB}
+              onChange={setQB}
+            />
+            <QcmStep
+              label="Si la pente a augmente, la droite devient…"
+              tone="violet"
+              options={[
+                { key: 'pentue', label: 'Plus pentue (plus raide)' },
+                { key: 'plate', label: 'Plus plate' },
+                { key: 'horiz', label: 'Horizontale' },
+              ]}
+              value={qPente}
+              onChange={setQPente}
             />
           </div>
-
           <div className="mt-5 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setStep('enigme')}>
-              Revoir l’énigme
+            <Button variant="outline" onClick={() => setStep('application')}>
+              Revoir
             </Button>
-            <Button
-              variant="success"
-              disabled={!appValid || busy}
-              onClick={handleValidate}
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              {busy ? 'Envoi…' : 'Valider le TP'}
+            <Button variant="success" disabled={!qA || !qB || !qPente || busy} onClick={handleValidate}>
+              <CheckCircle2 className="h-4 w-4" /> {busy ? 'Envoi…' : 'Valider le TP'}
             </Button>
           </div>
         </Card>
@@ -373,16 +329,17 @@ export function FonctionsAffines3eme({ onComplete, busy }: SimulationModuleProps
         <Card variant="hero-maths">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-action-700" />
-              TP terminé !
+              <CheckCircle2 className="h-5 w-5 text-action-700" /> TP terminé — score {score}/100
             </CardTitle>
           </CardHeader>
-          <p className="text-ink/70">
-            Ton travail est enregistré. La vraie formule était{' '}
-            <span className="font-mono">y = {ENIG_A_TRUE}·x + {ENIG_B_TRUE}</span>, soit{' '}
-            <strong>{APP_Y_TRUE} F CFA</strong> pour {APP_X} kWh. Tu retrouves ton score et tes
-            badges sur le tableau de bord.
-          </p>
+          <div className="space-y-3 text-ink/80">
+            <p>
+              Dans <span className="font-mono">y = a·x + b</span> : <strong>a</strong> est la pente (le prix d&apos;un kWh = {PRIX_KWH} F),{' '}
+              <strong>b</strong> l&apos;ordonnée à l&apos;origine (l&apos;abonnement = {ABONNEMENT} F). Pour {APP_X} kWh, M. Diop paie{' '}
+              <strong>{APP_TRUE.toLocaleString('fr-FR')} F CFA</strong>.
+            </p>
+            <NarrationButton text={CONCLUSION} label="Écouter le résumé" />
+          </div>
         </Card>
       )}
     </div>

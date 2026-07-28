@@ -4,7 +4,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { DoubleSide, Mesh, Vector3 } from 'three';
 import { LabScene } from '@/components/lab/lab-scene';
-import { HotspotCoach } from '@/components/lab/hotspot-coach';
+import { HotspotCoach, Readout } from '@/components/lab3d/annotations';
 
 /**
  * Scène 3D — états de la matière (eau du Saloum).
@@ -203,6 +203,7 @@ export default function WaterStatesScene({
     >
       <Beaker />
       <Molecules mode={mode} temperature={temperature} />
+      <Readout position={[R + 1.4, Y_BASE + 1.3, 0]} value={Math.round(temperature)} unit="°C" caption="température" />
       {showHotspot && <HotspotCoach position={[0, H / 2 + 0.6, 0]} label={hotspotLabel} tone={hotspotTone} />}
     </LabScene>
   );

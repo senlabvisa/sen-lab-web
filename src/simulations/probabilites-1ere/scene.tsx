@@ -1,38 +1,60 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Html } from '@react-three/drei';
+import { useMemo } from 'react';
+import type { Vector3Tuple } from 'three';
 import { LabScene } from '@/components/lab/lab-scene';
+import { GraphPaper } from '@/components/lab3d/environment';
+import { Axes2D, PolyLine, Marker } from '@/components/lab3d/plot';
+import { SceneLabel, Readout, Tag3D } from '@/components/lab3d/annotations';
+
+/**
+ * Scène 3D — loi des grands nombres (Maths, 1ère).
+ *
+ * On lance une pièce N fois et on trace la fréquence cumulée de Pile en
+ * fonction du nombre de lancers (PolyLine). La courbe oscille au début puis
+ * se resserre autour de la probabilité théorique 0,5 (ligne de référence) :
+ * c'est la loi des grands nombres. Construit sur le kit lab3d.
+ */
 
 export type ProbSceneProps = { trials: number };
 
+const X0 = -2.6;
+const X1 = 2.6;
+const yOf = (f: number) => Math.max(-1.95, Math.min(1.95, (f - 0.5) * 4)); // f=0,5 → 0
+
 export default function ProbScene({ trials }: ProbSceneProps) {
-  const [results, setResults] = useState<('pile' | 'face')[]>([]);
-  useEffect(() => {
-    const arr: ('pile' | 'face')[] = [];
-    for (let i = 0; i < trials; i++) arr.push(Math.random() < 0.5 ? 'pile' : 'face');
-    setResults(arr);
+  const { pts, finalF } = useMemo(() => {
+    const N = Math.max(1, Math.round(trials));
+    const stepEvery = Math.max(1, Math.floor(N / 200));
+    let pile = 0;
+    const arr: Vector3Tuple[] = [];
+    for (let i = 1; i <= N; i++) {
+      if (Math.random() < 0.5) pile++;
+      if (i % stepEvery === 0 || i === N) {
+        arr.push([X0 + (i / N) * (X1 - X0), yOf(pile / i), 0.03]);
+      }
+    }
+    return { pts: arr, finalF: pile / N };
   }, [trials]);
-  const pile = results.filter(r => r === 'pile').length;
-  const ratio = trials > 0 ? pile / trials : 0;
+
+  const end = pts[pts.length - 1] ?? ([X1, 0, 0.03] as Vector3Tuple);
+
   return (
-    <LabScene cameraPosition={[2, 1, 4]} background="#F5F3FF" minDistance={3} maxDistance={9}>
-      {/* Pile : cylindre violet */}
-      <mesh position={[-1, ratio - 1, 0]}>
-        <cylinderGeometry args={[0.4, 0.4, Math.max(0.1, ratio * 2), 16]} />
-        <meshStandardMaterial color="#7C3AED" />
-      </mesh>
-      {/* Face : cylindre orange */}
-      <mesh position={[1, (1 - ratio) - 1, 0]}>
-        <cylinderGeometry args={[0.4, 0.4, Math.max(0.1, (1 - ratio) * 2), 16]} />
-        <meshStandardMaterial color="#FB923C" />
-      </mesh>
-      <Html position={[0, 1.8, 0]} center distanceFactor={9}>
-        <div className="rounded-2xl bg-white/95 px-3 py-1 text-center shadow-card ring-1 ring-violet-200">
-          <div className="font-mono text-xs">{trials} lancers</div>
-          <div className="font-display text-base font-bold"><span className="text-violet-700">Pile {(ratio * 100).toFixed(0)}%</span> / <span className="text-orange-700">Face {((1-ratio) * 100).toFixed(0)}%</span></div>
-        </div>
-      </Html>
+    <LabScene cameraPosition={[0, 0.1, 6.2]} background="#F5F3FF" minDistance={4} maxDistance={10} groundY={null}>
+      <GraphPaper width={6.2} height={4.4} step={0.5} />
+      <Axes2D size={2.6} color="#5B21B6" />
+
+      {/* Probabilité théorique : ligne de référence à 0,5 */}
+      <PolyLine points={[[X0, yOf(0.5), 0.02], [X1, yOf(0.5), 0.02]]} color="#16A34A" width={2.5} dashed />
+      <Tag3D position={[X1 - 0.1, yOf(0.5) + 0.32, 0.04]} label="p = 0,5" tone="svt" />
+
+      {/* Fréquence cumulée de Pile */}
+      <PolyLine points={pts} color="#7C3AED" width={3} />
+      <Marker position={end} color="#DC2626" size={0.1} />
+
+      <SceneLabel position={[0, 2.4, 0]} title="Fréquence de Pile" subtitle={`${Math.max(1, Math.round(trials))} lancers · loi des grands nombres`} tone="maths" />
+      <Readout position={[1.9, 1.6, 0]} value={(finalF * 100).toFixed(1)} unit="%" caption="fréquence observée" />
+      <Readout position={[-1.9, -2.0, 0]} value={(Math.abs(finalF - 0.5) * 100).toFixed(1)} unit="pts" caption="écart à 50 %" />
     </LabScene>
   );
 }

@@ -38,7 +38,7 @@ const WaterStatesScene = dynamic(() => import('./water-states-scene'), {
   ),
 });
 
-type Step = 'intro' | 'manipulate' | 'qcm' | 'application' | 'done';
+type Step = 'intro' | 'hypo' | 'manipulate' | 'qcm' | 'application' | 'done';
 type YesNo = 'glace' | 'liquide' | 'vapeur';
 
 const INTRO_NARRATION =
@@ -63,6 +63,7 @@ export function EtatsMatiere6eme({ onComplete, busy }: SimulationModuleProps) {
   const [temperature, setTemperature] = useState(25);
   const [statesTried, setStatesTried] = useState<Set<WaterStateMode>>(new Set(['liquid']));
 
+  const [qHypo, setQHypo] = useState<YesNo | null>(null);
   const [qOrganise, setQOrganise] = useState<YesNo | null>(null);
   const [qAgite, setQAgite] = useState<YesNo | null>(null);
   const [qBouillir, setQBouillir] = useState<'0' | '50' | '100' | '150' | null>(null);
@@ -81,22 +82,24 @@ export function EtatsMatiere6eme({ onComplete, busy }: SimulationModuleProps) {
 
   const score = useMemo(() => {
     let s = 0;
-    s += statesTried.size * 10;
+    s += statesTried.size * 10; // exploration des 3 états (max 30)
+    if (qHypo === 'vapeur') s += 10;
     if (qOrganise === 'glace') s += 20;
     if (qAgite === 'vapeur') s += 20;
-    if (qBouillir === '100') s += 20;
+    if (qBouillir === '100') s += 10;
     if (qEvap === 'sel-reste') s += 10;
     return Math.max(0, Math.min(100, s));
-  }, [statesTried, qOrganise, qAgite, qBouillir, qEvap]);
+  }, [statesTried, qHypo, qOrganise, qAgite, qBouillir, qEvap]);
 
   async function handleValidate() {
     await onComplete(
       {
         shell: 'etats-matiere-6eme',
-        version: '1.0',
+        version: '2.0',
         steps: {
           temperature,
           statesTried: Array.from(statesTried),
+          hypothesis: qHypo,
           qcm: { qOrganise, qAgite, qBouillir, qEvap },
         },
       },
@@ -138,8 +141,40 @@ export function EtatsMatiere6eme({ onComplete, busy }: SimulationModuleProps) {
             </div>
           </div>
           <div className="mt-5 flex justify-end">
-            <Button variant="gradient" onClick={() => setStep('manipulate')}>
-              Ouvrir le bécher 3D
+            <Button variant="gradient" onClick={() => setStep('hypo')}>
+              Commencer
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {step === 'hypo' && (
+        <Card padding="lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Thermometer className="h-5 w-5 text-violet-700" />
+              Étape 1 — Ton hypothèse
+            </CardTitle>
+            <Badge tone="science">1/4</Badge>
+          </CardHeader>
+          <p className="mb-3 text-sm text-ink/70">
+            Avant d&apos;observer le bécher : selon toi, dans quel état les particules d&apos;eau bougent-elles le{' '}
+            <strong>plus vite</strong> ?
+          </p>
+          <Qcm
+            label="Les particules s'agitent le plus dans…"
+            options={[
+              { key: 'glace', label: 'La glace (solide)' },
+              { key: 'liquide', label: "L'eau liquide" },
+              { key: 'vapeur', label: 'La vapeur (gaz)' },
+            ]}
+            value={qHypo}
+            onChange={(v) => setQHypo(v as YesNo)}
+          />
+          <div className="mt-5 flex justify-end">
+            <Button variant="gradient" disabled={!qHypo} onClick={() => setStep('manipulate')}>
+              Vérifier dans le bécher
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -151,9 +186,9 @@ export function EtatsMatiere6eme({ onComplete, busy }: SimulationModuleProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Thermometer className="h-5 w-5 text-violet-700" />
-              Étape 1 — Chauffe et refroidis l&apos;eau
+              Étape 2 — Chauffe et refroidis l&apos;eau
             </CardTitle>
-            <Badge tone="science">1/3</Badge>
+            <Badge tone="science">2/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
             Fais glisser le thermomètre. Observe les particules dans le bécher. Tourne la scène
@@ -243,8 +278,8 @@ export function EtatsMatiere6eme({ onComplete, busy }: SimulationModuleProps) {
       {step === 'qcm' && (
         <Card padding="lg">
           <CardHeader>
-            <CardTitle>Étape 2 — Ce que tu as observé</CardTitle>
-            <Badge tone="science">2/3</Badge>
+            <CardTitle>Étape 3 — Ce que tu as observé</CardTitle>
+            <Badge tone="science">3/4</Badge>
           </CardHeader>
 
           <div className="space-y-5">
@@ -300,8 +335,8 @@ export function EtatsMatiere6eme({ onComplete, busy }: SimulationModuleProps) {
       {step === 'application' && (
         <Card padding="lg">
           <CardHeader>
-            <CardTitle>Étape 3 — Retour au Saloum</CardTitle>
-            <Badge tone="science">3/3</Badge>
+            <CardTitle>Étape 4 — Retour au Saloum</CardTitle>
+            <Badge tone="science">4/4</Badge>
           </CardHeader>
           <p className="mb-4 text-ink/80">
             Reprends le bassin de récolte de sel à Foundiougne. L&apos;eau de mer (eau + sel) est

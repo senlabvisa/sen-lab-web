@@ -1,29 +1,60 @@
 'use client';
 
-import { Html } from '@react-three/drei';
+import { useRef } from 'react';
+import { Group } from 'three';
 import { LabScene } from '@/components/lab/lab-scene';
+import { LabBench } from '@/components/lab3d/environment';
+import { Beaker } from '@/components/lab3d/glassware';
+import { DNAHelix } from '@/components/lab3d/molecule';
+import { SceneLabel, Tag3D } from '@/components/lab3d/annotations';
+import { Animate } from '@/components/lab3d/anim';
+
+/**
+ * Scène 3D — extraction de l'ADN d'une banane (SVT, 2nde).
+ *
+ * Quatre étapes du protocole dans un bécher réaliste (verrerie du kit). Au
+ * stade final (alcool), une vraie double hélice d'ADN (DNAHelix du kit)
+ * précipite et remonte au-dessus du mélange, en rotation lente. Construit sur
+ * le kit lab3d — fini les deux cylindres bricolés.
+ */
 
 export type DnaSceneProps = { stage: number };
-const STAGES = ['Banane écrasée', 'Mélange savon+sel', 'Filtration', 'Alcool : ADN visible'];
+
+const GROUND_Y = -1.5;
+const STAGES = [
+  { name: 'Banane écrasée', color: '#FCD34D', fill: 0.5 },
+  { name: 'Savon + sel', color: '#D6D3D1', fill: 0.56 },
+  { name: 'Filtration', color: '#BFDBFE', fill: 0.5 },
+  { name: 'Alcool : ADN visible', color: '#C7D2FE', fill: 0.44 },
+];
 
 export default function DnaScene({ stage }: DnaSceneProps) {
+  const s = Math.max(0, Math.min(3, Math.round(stage)));
+  const cfg = STAGES[s];
+  const dna = useRef<Group>(null);
+
   return (
-    <LabScene cameraPosition={[2, 1, 4]} background="#FCE7F3" minDistance={3} maxDistance={9}>
-      <mesh><cylinderGeometry args={[0.7, 0.7, 1.8, 24, 1, true]} /><meshStandardMaterial color="#BFDBFE" opacity={0.18} transparent side={2} /></mesh>
-      <mesh position={[0, -0.4, 0]}>
-        <cylinderGeometry args={[0.68, 0.68, 1, 24]} />
-        <meshStandardMaterial color={stage === 0 ? '#FEF3C7' : stage === 1 ? '#F4F4F5' : stage === 2 ? '#BFDBFE' : '#A78BFA'} opacity={0.85} transparent />
-      </mesh>
-      {/* ADN qui apparaît au stade 3 */}
-      {stage === 3 && [[0.2, 0.3, 0], [-0.1, 0.5, 0]].map((p, i) => (
-        <mesh key={i} position={p as any} rotation={[0, 0, 0.3]}><cylinderGeometry args={[0.04, 0.04, 0.6, 8]} /><meshStandardMaterial color="#F8FAFC" emissive="#7C3AED" emissiveIntensity={0.4} /></mesh>
-      ))}
-      <Html position={[0, 1.5, 0]} center distanceFactor={9}>
-        <div className="rounded-2xl bg-white/95 px-3 py-1 text-center shadow-card ring-1 ring-pink-200">
-          <div className="text-[10px] uppercase text-ink/50">Étape {stage + 1}/4</div>
-          <div className="font-display text-sm font-bold text-pink-700">{STAGES[stage]}</div>
-        </div>
-      </Html>
+    <LabScene cameraPosition={[2.2, 1.0, 4.8]} background="#FCE7F3" minDistance={3} maxDistance={10} groundY={GROUND_Y}>
+      <LabBench y={GROUND_Y} color="#E7D8B8" size={24} />
+
+      <Beaker position={[0, GROUND_Y + 1.05, 0]} radius={0.92} height={2.0} fill={cfg.fill} liquidColor={cfg.color} />
+
+      {/* Double hélice qui précipite à l'étape finale */}
+      {s === 3 && (
+        <>
+          <group ref={dna} position={[0, GROUND_Y + 2.0, 0]}>
+            <DNAHelix turns={2} height={1.3} radius={0.2} />
+          </group>
+          <Tag3D position={[0.7, GROUND_Y + 2.3, 0]} label="ADN" tone="svt" />
+        </>
+      )}
+      <Animate
+        fn={(_s, delta) => {
+          if (dna.current) dna.current.rotation.y += delta * 0.7;
+        }}
+      />
+
+      <SceneLabel position={[0, GROUND_Y + 3.1, 0]} title={cfg.name} subtitle={`Étape ${s + 1}/4 · extraction d'ADN`} tone="svt" />
     </LabScene>
   );
 }
