@@ -2,95 +2,162 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ArrowRight, BarChart3, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, BarChart3, CheckCircle2, Eraser, MapPin, PenLine, Table2 } from 'lucide-react';
 import type { SimulationModuleProps } from '@senlabvisa/shared-types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { NarrationButton } from '@/components/lab/narration-button';
+import { QcmStep } from '@/components/lab/qcm-step';
 
 /**
- * TP — Lecture de graphiques (météo Dakar) — 6ème, Maths.
+ * TP — Lire et construire un graphique : le climat du Sénégal (Maths, 6ème).
  *
- * Lab Premium Maths : graphique 3D des précipitations mensuelles à
- * Dakar (12 barres bleues) + soleil. L'élève lit les valeurs en
- * cliquant sur les barres, puis répond à des questions sur les
- * extrêmes et les saisons.
+ * Flow Lab Premium : intro → hypothèse → manipulation 3D (construire la
+ * courbe des températures sur le diagramme en barres des pluies) → mesures
+ * (maximum, minimum, étendue) → QCM → bilan.
+ *
+ * Données mensuelles plausibles pour Dakar (~400 mm/an), Ziguinchor
+ * (~1200 mm/an) et Podor (~250 mm/an). Même échelle pour les trois villes.
  */
 
 const MeteoScene = dynamic(() => import('./meteo-scene'), {
   ssr: false,
   loading: () => (
-    <div className="grid h-full min-h-[320px] place-items-center bg-gradient-to-br from-amber-50 via-white to-blue-50 text-sm text-ink/50">
+    <div className="grid h-full min-h-[320px] place-items-center bg-gradient-to-br from-sky-50 via-white to-blue-50 text-sm text-ink/50">
       Chargement du graphique 3D…
     </div>
   ),
 });
 
-type Step = 'intro' | 'observe' | 'qpic' | 'qsaison' | 'done';
-type MaxMonth = 'juillet' | 'aout' | 'septembre' | 'octobre' | null;
-type Saison = 'hivernage' | 'seche-fraiche' | 'seche-chaude' | null;
+type Step = 'intro' | 'hypo' | 'manip' | 'mesures' | 'qcm' | 'done';
+type CityKey = 'dakar' | 'ziguinchor' | 'podor';
+type HypoRep = CityKey | null;
 
-const DAKAR_DATA = [
-  { month: 'Jan', rain: 0, temp: 21 },
-  { month: 'Fév', rain: 1, temp: 21 },
-  { month: 'Mar', rain: 0, temp: 22 },
-  { month: 'Avr', rain: 0, temp: 22 },
-  { month: 'Mai', rain: 1, temp: 23 },
-  { month: 'Juin', rain: 18, temp: 26 },
-  { month: 'Juil', rain: 88, temp: 27 },
-  { month: 'Août', rain: 250, temp: 27 },
-  { month: 'Sep', rain: 163, temp: 27 },
-  { month: 'Oct', rain: 38, temp: 27 },
-  { month: 'Nov', rain: 3, temp: 25 },
-  { month: 'Déc', rain: 6, temp: 22 },
+const MONTHS = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
 
-const INTRO_NARRATION =
-  "Au Sénégal, on parle souvent de la saison sèche et de l'hivernage. Mais quelle est exactement la différence ? " +
-  "Combien tombe-t-il de pluie à Dakar dans une année ? Tu vas lire un graphique en 3D des précipitations mois par mois.";
+type City = { key: CityKey; name: string; region: string; rain: number[]; temp: number[] };
 
-const CONCLUSION_NARRATION =
-  "Bravo ! Tu as découvert que la pluie à Dakar tombe surtout entre juin et octobre, c'est l'hivernage. " +
-  "Le reste de l'année, c'est la saison sèche. Le mois le plus pluvieux est août, avec environ 250 mm. " +
-  "Lire un graphique te permet de comprendre des données en un coup d'œil.";
+/** Relevés mensuels (janvier → décembre) : pluie en mm, température moyenne en °C. */
+const CITIES: City[] = [
+  {
+    key: 'dakar',
+    name: 'Dakar',
+    region: 'côte atlantique',
+    rain: [0, 1, 0, 0, 1, 15, 70, 180, 105, 25, 3, 2],
+    temp: [21, 20, 21, 21, 23, 26, 28, 28, 28, 28, 26, 23],
+  },
+  {
+    key: 'ziguinchor',
+    name: 'Ziguinchor',
+    region: 'Casamance',
+    rain: [0, 0, 0, 0, 5, 110, 300, 400, 290, 90, 5, 0],
+    temp: [25, 27, 28, 29, 29, 29, 27, 26, 27, 27, 27, 25],
+  },
+  {
+    key: 'podor',
+    name: 'Podor',
+    region: 'vallée du fleuve, Sahel',
+    rain: [0, 0, 0, 0, 0, 10, 55, 110, 60, 12, 0, 0],
+    temp: [22, 25, 28, 32, 35, 37, 34, 32, 33, 33, 28, 23],
+  },
+];
+
+function stats(c: City) {
+  const total = c.rain.reduce((a, b) => a + b, 0);
+  const rMax = Math.max(...c.rain);
+  const rMin = Math.min(...c.rain);
+  const tMax = Math.max(...c.temp);
+  const tMin = Math.min(...c.temp);
+  return {
+    total,
+    rMax,
+    rMin,
+    rSpan: rMax - rMin,
+    rMonth: MONTHS[c.rain.indexOf(rMax)],
+    tMax,
+    tMin,
+    tSpan: tMax - tMin,
+    tMonth: MONTHS[c.temp.indexOf(tMax)],
+  };
+}
+
+const INTRO =
+  "À la radio, on annonce chaque année l'arrivée de l'hivernage. Mais il ne pleut pas pareil partout au Sénégal : " +
+  "Ziguinchor, en Casamance, reçoit environ 1200 millimètres d'eau par an, alors que Podor, dans le Sahel, en reçoit à peine 250. " +
+  "Pour comparer, les météorologues dessinent un diagramme : des barres pour la pluie de chaque mois, une courbe pour la température. " +
+  "Aujourd'hui, tu vas lire ce graphique et le construire toi-même.";
+
+const CONCLUSION =
+  "Bravo ! Tu sais maintenant lire un diagramme : en abscisse les douze mois, en ordonnée la hauteur de pluie en millimètres à gauche et la température en degrés à droite. " +
+  "Les barres montrent la quantité tombée pendant chaque mois, la courbe montre comment la température évolue tout au long de l'année. " +
+  "L'étendue se calcule en faisant maximum moins minimum. Et pour comparer deux villes honnêtement, il faut garder la même échelle.";
 
 export function GraphiquesMeteo6eme({ onComplete, busy }: SimulationModuleProps) {
   const [step, setStep] = useState<Step>('intro');
-  const [selected, setSelected] = useState<number | null>(null);
-  const [explored, setExplored] = useState<Set<number>>(new Set());
+  const [cityKey, setCityKey] = useState<CityKey>('dakar');
+  const [month, setMonth] = useState(0);
+  const [placed, setPlaced] = useState<Record<CityKey, number[]>>({ dakar: [], ziguinchor: [], podor: [] });
+  const [visited, setVisited] = useState<Set<CityKey>>(new Set<CityKey>(['dakar']));
 
-  const [maxMonth, setMaxMonth] = useState<MaxMonth>(null);
-  const [saison, setSaison] = useState<Saison>(null);
+  const [hypo, setHypo] = useState<HypoRep>(null);
+  const [qAxe, setQAxe] = useState<string | null>(null);
+  const [qLecture, setQLecture] = useState<string | null>(null);
+  const [qEtendue, setQEtendue] = useState<string | null>(null);
 
-  function handleSelect(i: number) {
-    setSelected(i);
-    setExplored((prev) => {
-      if (prev.has(i)) return prev;
-      const next = new Set(prev);
-      next.add(i);
-      return next;
+  const city = useMemo(() => CITIES.find((c) => c.key === cityKey) as City, [cityKey]);
+  const st = useMemo(() => stats(city), [city]);
+  const marks = placed[cityKey];
+
+  const placedTotal = placed.dakar.length + placed.ziguinchor.length + placed.podor.length;
+  const curveDone = placed.dakar.length === 12 || placed.ziguinchor.length === 12 || placed.podor.length === 12;
+  const canContinue = curveDone && visited.size >= 2;
+
+  function pickCity(k: CityKey) {
+    setCityKey(k);
+    setMonth(0);
+    setVisited((prev) => new Set(prev).add(k));
+  }
+
+  function placePoint() {
+    setPlaced((prev) => {
+      if (prev[cityKey].includes(month)) return prev;
+      return { ...prev, [cityKey]: [...prev[cityKey], month] };
     });
+    setMonth((m) => (m + 1) % 12);
+  }
+
+  function clearCurve() {
+    setPlaced((prev) => ({ ...prev, [cityKey]: [] }));
+    setMonth(0);
   }
 
   const score = useMemo(() => {
     let s = 0;
-    s += Math.min(40, explored.size * 4); // max 40
-    if (maxMonth === 'aout') s += 30;
-    if (saison === 'hivernage') s += 30;
-    return Math.max(0, Math.min(100, s));
-  }, [explored, maxMonth, saison]);
+    s += Math.min(20, placedTotal * 2); // 10 points placés = 20 pts
+    s += Math.min(10, (visited.size - 1) * 5); // comparer 2 puis 3 villes
+    if (hypo === 'ziguinchor') s += 10;
+    if (qAxe === 'mois') s += 20;
+    if (qLecture === 'barres-pluie') s += 20;
+    if (qEtendue === '15') s += 20;
+    return Math.max(0, Math.min(100, Math.round(s)));
+  }, [placedTotal, visited, hypo, qAxe, qLecture, qEtendue]);
 
   async function handleValidate() {
     await onComplete(
       {
         shell: 'graphiques-meteo-6eme',
-        version: '1.0',
+        version: '2.0',
         steps: {
-          explored: Array.from(explored),
-          maxMonth,
-          saison,
-          data: DAKAR_DATA,
+          hypothesis: hypo,
+          citiesVisited: Array.from(visited),
+          pointsPlaced: { dakar: placed.dakar.length, ziguinchor: placed.ziguinchor.length, podor: placed.podor.length },
+          readings: CITIES.map((c) => ({ city: c.key, ...stats(c) })),
+          qcm: { qAxe, qLecture, qEtendue },
         },
       },
       score,
@@ -101,154 +168,289 @@ export function GraphiquesMeteo6eme({ onComplete, busy }: SimulationModuleProps)
   return (
     <div className="space-y-4">
       {step === 'intro' && (
-        <Card variant="hero" padding="lg">
+        <Card variant="hero-maths" padding="lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-blue-700 shadow-soft ring-1 ring-blue-100">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-violet-700 shadow-soft ring-1 ring-violet-100">
                 <BarChart3 className="h-5 w-5" />
               </span>
-              La pluie à Dakar, mois par mois
+              Lire le climat du Sénégal dans un graphique
             </CardTitle>
             <Badge tone="maths">Maths · 6ème</Badge>
           </CardHeader>
           <div className="space-y-3 text-ink/80">
             <p>
-              À <strong>Dakar</strong>, certains mois il pleut beaucoup, d&apos;autres pas du
-              tout. Tu vas lire un graphique 3D pour savoir quand pleuvoir, et comprendre la
-              différence entre la <strong>saison sèche</strong> et l&apos;<strong>hivernage</strong>.
+              Il ne pleut pas de la même façon partout : <strong>Ziguinchor</strong> (Casamance) reçoit environ
+              1200 mm d&apos;eau par an, <strong>Dakar</strong> environ 400 mm et <strong>Podor</strong> (Sahel) à
+              peine 250 mm. Pour comparer, on trace un <strong>diagramme ombrothermique</strong>.
             </p>
-            <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900 ring-1 ring-blue-100">
-              <strong>Mission :</strong> clique sur chaque barre pour lire la pluie et la
-              température du mois. Trouve le mois le plus pluvieux !
+            <p className="rounded-xl bg-violet-50 p-3 text-sm text-violet-900 ring-1 ring-violet-100">
+              <strong>Mission :</strong> les <span className="font-semibold text-blue-700">barres bleues</span> donnent
+              la pluie de chaque mois (mm). À toi de <strong>construire la courbe rouge</strong> des températures (°C),
+              point par point, puis de comparer deux villes.
             </p>
-            <div className="pt-2">
-              <NarrationButton text={INTRO_NARRATION} label="Écouter l'introduction" />
-            </div>
+            <NarrationButton text={INTRO} label="Écouter l'introduction" />
           </div>
           <div className="mt-5 flex justify-end">
-            <Button variant="gradient" onClick={() => setStep('observe')}>
-              Voir le graphique
-              <ArrowRight className="h-4 w-4" />
+            <Button variant="gradient" onClick={() => setStep('hypo')}>
+              Commencer <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </Card>
       )}
 
-      {step === 'observe' && (
+      {step === 'hypo' && (
         <Card padding="lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-700" />
-              Étape 1 — Explore le graphique
+              <MapPin className="h-5 w-5 text-violet-700" /> Étape 1 — Ton hypothèse
             </CardTitle>
-            <Badge tone="maths">1/3</Badge>
+            <Badge tone="maths">1/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            Clique sur les barres bleues pour voir la pluie (mm) et la température (°C) de chaque
-            mois.
+            Avant de lire les graphiques, fais un pari. Tu vérifieras ensuite avec les données.
+          </p>
+          <QcmStep
+            label="Selon moi, la ville qui reçoit le plus de pluie dans l'année est…"
+            tone="violet"
+            options={[
+              { key: 'dakar', label: 'Dakar (côte atlantique)' },
+              { key: 'ziguinchor', label: 'Ziguinchor (Casamance)' },
+              { key: 'podor', label: 'Podor (vallée du fleuve)' },
+            ]}
+            value={hypo}
+            onChange={(v) => setHypo(v as HypoRep)}
+          />
+          <div className="mt-5 flex justify-end">
+            <Button variant="gradient" disabled={!hypo} onClick={() => setStep('manip')}>
+              Ouvrir le graphique <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {step === 'manip' && (
+        <Card padding="lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PenLine className="h-5 w-5 text-violet-700" /> Étape 2 — Construis la courbe
+            </CardTitle>
+            <Badge tone="maths">2/4</Badge>
+          </CardHeader>
+          <p className="mb-3 text-sm text-ink/70">
+            Choisis le mois avec le curseur, lis la température, puis pose le point à la bonne hauteur. Change de
+            ville pour comparer : l&apos;<strong>échelle reste la même</strong> (1 carreau = 50 mm = 5 °C).
           </p>
 
-          <div className="overflow-hidden rounded-2xl ring-1 ring-blue-100">
+          <div className="mb-3 flex flex-wrap gap-2">
+            {CITIES.map((c) => (
+              <Button
+                key={c.key}
+                size="sm"
+                variant={c.key === cityKey ? 'gradient' : 'outline'}
+                onClick={() => pickCity(c.key)}
+              >
+                <MapPin className="h-4 w-4" /> {c.name}
+              </Button>
+            ))}
+          </div>
+
+          <div className="overflow-hidden rounded-2xl ring-1 ring-violet-100">
             <div className="aspect-[4/3] w-full">
-              <MeteoScene data={DAKAR_DATA} selectedIndex={selected} onSelect={handleSelect} />
+              <MeteoScene cityName={city.name} rain={city.rain} temp={city.temp} month={month} placed={marks} />
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs text-ink/60">
-              Explorés : <strong>{explored.size}/12</strong> mois
-            </span>
-            <Badge tone={explored.size >= 5 ? 'action' : 'neutral'} size="sm">
-              {explored.size >= 5 ? 'Bien exploré' : 'Encore quelques mois'}
-            </Badge>
+          <div className="mt-4">
+            <div className="mb-1 flex justify-between text-xs">
+              <Label htmlFor="mois">Mois lu en abscisse</Label>
+              <span className="font-mono text-violet-700">{MONTHS[month]}</span>
+            </div>
+            <input
+              id="mois"
+              type="range"
+              min={0}
+              max={11}
+              step={1}
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+              className="slider-lab w-full"
+            />
           </div>
 
-          <div className="mt-4 flex justify-end">
-            <Button variant="gradient" disabled={explored.size < 5} onClick={() => setStep('qpic')}>
-              Question 1
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+            <Stat label="Pluie du mois" value={`${city.rain[month]} mm`} />
+            <Stat label="Température" value={`${city.temp[month]} °C`} />
+            <Stat label="Points posés" value={`${marks.length}/12`} />
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex gap-2">
+              <Button variant="soft" size="sm" onClick={placePoint} disabled={marks.includes(month)}>
+                <PenLine className="h-4 w-4" />
+                {marks.includes(month) ? 'Point déjà posé' : `Placer ${city.temp[month]} °C`}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={clearCurve} disabled={marks.length === 0}>
+                <Eraser className="h-4 w-4" /> Effacer
+              </Button>
+            </div>
+            <Button variant="gradient" disabled={!canContinue} onClick={() => setStep('mesures')}>
+              {!curveDone
+                ? `Termine une courbe (${marks.length}/12)`
+                : visited.size < 2
+                  ? 'Visite une 2ᵉ ville'
+                  : 'Voir mes mesures'}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </Card>
       )}
 
-      {step === 'qpic' && (
+      {step === 'mesures' && (
         <Card padding="lg">
           <CardHeader>
-            <CardTitle>Étape 2 — Le mois le plus pluvieux</CardTitle>
-            <Badge tone="maths">2/3</Badge>
+            <CardTitle className="flex items-center gap-2">
+              <Table2 className="h-5 w-5 text-violet-700" /> Étape 3 — Maximum, minimum, étendue
+            </CardTitle>
+            <Badge tone="maths">3/4</Badge>
           </CardHeader>
-          <Qcm
-            label="Quel est le mois où il tombe le plus de pluie à Dakar ?"
-            options={[
-              { key: 'juillet', label: 'Juillet' },
-              { key: 'aout', label: 'Août' },
-              { key: 'septembre', label: 'Septembre' },
-              { key: 'octobre', label: 'Octobre' },
-            ]}
-            value={maxMonth}
-            onChange={(v) => setMaxMonth(v as MaxMonth)}
-          />
-
+          <p className="mb-3 text-sm text-ink/70">
+            Voici ce que disent les trois graphiques. Rappel :{' '}
+            <strong>étendue = valeur maximale − valeur minimale</strong>.
+          </p>
+          <div className="overflow-x-auto rounded-2xl ring-1 ring-night-100">
+            <table className="w-full text-sm">
+              <thead className="bg-violet-50 text-xs uppercase tracking-wider text-violet-700">
+                <tr>
+                  <th className="px-3 py-2 text-left">Ville</th>
+                  <th className="px-3 py-2 text-left">Pluie de l&apos;année</th>
+                  <th className="px-3 py-2 text-left">Mois le plus pluvieux</th>
+                  <th className="px-3 py-2 text-left">Étendue des pluies</th>
+                  <th className="px-3 py-2 text-left">Températures</th>
+                  <th className="px-3 py-2 text-left">Étendue des °C</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CITIES.map((c) => {
+                  const s = stats(c);
+                  const seen = visited.has(c.key);
+                  return (
+                    <tr key={c.key} className={'border-t border-night-100 ' + (seen ? 'bg-violet-50/40' : '')}>
+                      <td className="px-3 py-2 font-semibold">
+                        {c.name} {seen ? '👁' : ''}
+                        <div className="text-[10px] font-normal text-ink/50">{c.region}</div>
+                      </td>
+                      <td className="px-3 py-2">{s.total} mm</td>
+                      <td className="px-3 py-2">
+                        {s.rMonth} ({s.rMax} mm)
+                      </td>
+                      <td className="px-3 py-2 font-mono">
+                        {s.rMax} − {s.rMin} = {s.rSpan} mm
+                      </td>
+                      <td className="px-3 py-2">
+                        de {s.tMin} à {s.tMax} °C
+                      </td>
+                      <td className="px-3 py-2 font-mono">{s.tSpan} °C</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 rounded-xl bg-sky-50 p-3 text-sm text-sky-900 ring-1 ring-sky-100">
+            À {city.name}, la pluie tombe surtout de <strong>juin à octobre</strong> : c&apos;est l&apos;
+            <strong>hivernage</strong>. Le reste de l&apos;année, les barres sont presque nulles : c&apos;est la{' '}
+            <strong>saison sèche</strong>.
+          </p>
           <div className="mt-5 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setStep('observe')}>
-              Revoir le graphique
+            <Button variant="outline" onClick={() => setStep('manip')}>
+              Retourner au graphique
             </Button>
-            <Button variant="gradient" disabled={!maxMonth} onClick={() => setStep('qsaison')}>
-              Question 2
-              <ArrowRight className="h-4 w-4" />
+            <Button variant="gradient" onClick={() => setStep('qcm')}>
+              Conclure <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </Card>
       )}
 
-      {step === 'qsaison' && (
+      {step === 'qcm' && (
         <Card padding="lg">
           <CardHeader>
-            <CardTitle>Étape 3 — Et la saison ?</CardTitle>
-            <Badge tone="maths">3/3</Badge>
+            <CardTitle>Étape 4 — Valide ta lecture de graphique</CardTitle>
+            <Badge tone="maths">4/4</Badge>
           </CardHeader>
-          <Qcm
-            label="La période de juin à octobre, quand il pleut beaucoup, s'appelle :"
-            options={[
-              { key: 'hivernage', label: "L'hivernage (saison des pluies)" },
-              { key: 'seche-fraiche', label: 'La saison sèche fraîche' },
-              { key: 'seche-chaude', label: 'La saison sèche chaude' },
-            ]}
-            value={saison}
-            onChange={(v) => setSaison(v as Saison)}
-          />
-
+          <div className="space-y-5">
+            <QcmStep
+              label="Sur ce diagramme, l'axe horizontal (l'abscisse) porte…"
+              tone="violet"
+              options={[
+                { key: 'mois', label: "Les 12 mois de l'année" },
+                { key: 'mm', label: 'Les hauteurs de pluie, en millimètres' },
+                { key: 'degres', label: 'Les températures, en degrés Celsius' },
+              ]}
+              value={qAxe}
+              onChange={setQAxe}
+            />
+            <QcmStep
+              label="Que représentent les barres bleues et la courbe rouge ?"
+              tone="violet"
+              options={[
+                { key: 'barres-pluie', label: 'Barres = pluie tombée pendant chaque mois (mm) · courbe = température (°C)' },
+                { key: 'inverse', label: 'Barres = température (°C) · courbe = pluie (mm)' },
+                { key: 'meme', label: 'Les deux montrent la pluie, en deux couleurs différentes' },
+              ]}
+              value={qLecture}
+              onChange={setQLecture}
+            />
+            <QcmStep
+              label="À Podor, la température moyenne la plus haute est 37 °C (juin) et la plus basse 22 °C (janvier). L'étendue des températures vaut…"
+              tone="violet"
+              hint="Étendue = valeur maximale − valeur minimale."
+              options={[
+                { key: '15', label: '15 °C' },
+                { key: '59', label: '59 °C' },
+                { key: '22', label: '22 °C' },
+              ]}
+              value={qEtendue}
+              onChange={setQEtendue}
+            />
+          </div>
           <div className="mt-5 flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setStep('qpic')}>
-              Revoir
+            <Button variant="outline" onClick={() => setStep('mesures')}>
+              Revoir le tableau
             </Button>
-            <Button variant="success" disabled={!saison || busy} onClick={handleValidate}>
-              <CheckCircle2 className="h-4 w-4" />
-              {busy ? 'Envoi…' : 'Valider le TP'}
+            <Button variant="success" disabled={!qAxe || !qLecture || !qEtendue || busy} onClick={handleValidate}>
+              <CheckCircle2 className="h-4 w-4" /> {busy ? 'Envoi…' : 'Valider le TP'}
             </Button>
           </div>
         </Card>
       )}
 
       {step === 'done' && (
-        <Card variant="hero">
+        <Card variant="hero-maths">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-action-700" />
-              TP terminé !
+              <CheckCircle2 className="h-5 w-5 text-action-700" /> TP terminé — score {score}/100
             </CardTitle>
           </CardHeader>
           <div className="space-y-3 text-ink/80">
             <p>
-              Bravo ! À Dakar, le mois le plus pluvieux est <strong>août</strong> (~250 mm) et la
-              saison des pluies (juin-octobre) s&apos;appelle l&apos;<strong>hivernage</strong>.
+              En <strong>abscisse</strong> : les 12 mois. En <strong>ordonnée</strong> : la pluie en mm (axe bleu, à
+              gauche) et la température en °C (axe rouge, à droite). Les <strong>barres</strong> comptent la pluie de
+              chaque mois ; la <strong>courbe</strong> montre l&apos;évolution de la température.
             </p>
             <p>
-              Lire un graphique te permet de comprendre des données en un coup d&apos;œil — c&apos;est
-              une compétence très utile en sciences, en sport, et dans la vie quotidienne.
+              <strong>Étendue = maximum − minimum.</strong> Ziguinchor : 400 − 0 = <strong>400 mm</strong> d&apos;écart
+              entre le mois le plus arrosé et le plus sec ; Podor : 37 − 22 = <strong>15 °C</strong> d&apos;écart de
+              température. Ziguinchor reçoit ~1200 mm par an, Dakar ~400 mm, Podor ~250 mm : c&apos;est bien la
+              Casamance la plus arrosée.
             </p>
-            <NarrationButton text={CONCLUSION_NARRATION} label="Écouter le résumé" />
+            <p className="rounded-xl bg-violet-50 p-3 text-sm text-violet-900 ring-1 ring-violet-100">
+              Détail du score : exploration {Math.min(20, placedTotal * 2)}/20 · villes comparées{' '}
+              {Math.min(10, (visited.size - 1) * 5)}/10 · hypothèse {hypo === 'ziguinchor' ? 10 : 0}/10 · QCM{' '}
+              {(qAxe === 'mois' ? 20 : 0) + (qLecture === 'barres-pluie' ? 20 : 0) + (qEtendue === '15' ? 20 : 0)}/60.
+            </p>
+            <NarrationButton text={CONCLUSION} label="Écouter le résumé" />
           </div>
         </Card>
       )}
@@ -256,41 +458,11 @@ export function GraphiquesMeteo6eme({ onComplete, busy }: SimulationModuleProps)
   );
 }
 
-function Qcm({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: Array<{ key: string; label: string }>;
-  value: string | null;
-  onChange: (next: string) => void;
-}) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="mb-2 text-sm font-medium text-ink">{label}</p>
-      <div className="grid gap-2">
-        {options.map((opt) => (
-          <label
-            key={opt.key}
-            className={
-              'flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition ' +
-              (value === opt.key
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-ink/10 hover:border-blue-200 hover:bg-blue-50/50')
-            }
-          >
-            <input
-              type="radio"
-              className="mt-0.5 accent-blue-600"
-              checked={value === opt.key}
-              onChange={() => onChange(opt.key)}
-            />
-            <span>{opt.label}</span>
-          </label>
-        ))}
-      </div>
+    <div className="rounded-xl bg-violet-50 p-2 ring-1 ring-violet-100">
+      <div className="text-[10px] uppercase tracking-wider text-violet-700/70">{label}</div>
+      <div className="font-mono text-sm font-bold text-violet-800">{value}</div>
     </div>
   );
 }
