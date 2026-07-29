@@ -44,3 +44,36 @@ export { Atom, Bond, Molecule, DNAHelix, MOLECULES, type AtomSpec, type BondSpec
 
 // Animation (useFrame sûr, à placer DANS <LabScene>)
 export { Animate } from './anim';
+
+// Mouvement réaliste — easings, amortissement, ressorts, timeline, physique, bruit.
+// Les COMPOSANTS (<Spring>, <Timeline>, <Float>…) appellent useFrame : enfants de <LabScene>.
+// Les FONCTIONS (easings, damp, timelineAt…) sont pures et utilisables partout.
+export {
+  // easings
+  linear, easeIn, easeOut, easeInOut, easeInCubic, easeOutCubic, easeInOutSine,
+  smoothstep, smootherstep, easeInBack, easeOutBack, easeInOutBack,
+  easeInElastic, easeOutElastic, easeInBounce, easeOutBounce,
+  elastic, back, bounce, EASINGS, ease, type EasingFn, type EasingName,
+  // amortissement indépendant du framerate
+  damp, dampHalfLife, dampAngle, damp3,
+  // ressorts
+  createSpring, Spring, SpringTo, SPRING_PRESETS, type Spring1D,
+  // timeline
+  timelineAt, Timeline, type TimelineFrame,
+  // physique
+  oscillate, Oscillate, pendulumPeriod, springPeriod, fallWithBounces, FallBounce, AlongPath,
+  // bruit déterministe (jamais Math.random au rendu)
+  GOLDEN_ANGLE, goldenPhase, hash01, noise1D, fbm1D, Float,
+  // utilitaires
+  MAX_DELTA, clampDelta, clamp01, mix, remap,
+} from './anim';
+
+// Pédagogie — l'animation explique au lieu de décorer.
+// useStepClock/AutoNarration/ValueTrail/FocusHalo appellent useFrame : enfants de <LabScene>.
+export {
+  StepNarration, AutoNarration, useStepClock,
+  GhostState, DimGroup,
+  ValueTrail, FocusHalo, Callout,
+  CompareCard, ObservationCue, LegendCard,
+  type NarrationStep, type CompareValue, type LegendItem,
+} from './annotations';

@@ -8,22 +8,159 @@
  * À placer dans un <Canvas> (via LabScene).
  */
 
-import { useMemo } from 'react';
-import { DoubleSide, type Vector3Tuple } from 'three';
+import { useEffect, useMemo } from 'react';
+import {
+  CanvasTexture,
+  DoubleSide,
+  RepeatWrapping,
+  SRGBColorSpace,
+  type Texture,
+  type Vector3Tuple,
+} from 'three';
 import { Metal } from './materials';
 
-/** Paillasse de labo (plateau + léger biseau). Pose les objets dessus. */
+// ──────────────────────────────────────────────────────────────────────
+// Textures procédurales de paillasse (générées en mémoire, ZÉRO réseau)
+// ──────────────────────────────────────────────────────────────────────
+
+/** PRNG déterministe (mulberry32) → même grain à chaque exécution. */
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type BenchTextures = { grain: CanvasTexture; rough: CanvasTexture };
+let benchTexturesCache: BenchTextures | null | undefined;
+
+/**
+ * Génère le mouchetis « résine époxy » d'une paillasse : une carte de couleur
+ * quasi blanche (elle module la couleur du matériau, donc reste compatible avec
+ * la prop `color`) et une carte de rugosité corrélée. C'est la variation de
+ * rugosité qui, sous la carte d'environnement, fait lire la surface comme une
+ * vraie paillasse plutôt qu'un plastique uniforme.
+ *
+ * 256×256, générée une seule fois et partagée par toutes les scènes.
+ */
+function getBenchTextures(): BenchTextures | null {
+  if (benchTexturesCache !== undefined) return benchTexturesCache;
+  if (typeof document === 'undefined') {
+    benchTexturesCache = null;
+    return null;
+  }
+  const size = 256;
+  const make = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    return { canvas, ctx: canvas.getContext('2d') };
+  };
+  const a = make();
+  const b = make();
+  if (!a.ctx || !b.ctx) {
+    benchTexturesCache = null;
+    return null;
+  }
+
+  const grainImg = a.ctx.createImageData(size, size);
+  const roughImg = b.ctx.createImageData(size, size);
+  const rnd = mulberry32(0x5e17ab);
+
+  for (let i = 0; i < size * size; i++) {
+    // bruit fin + quelques éclats plus marqués (mouchetis de résine)
+    const fine = rnd();
+    const fleck = rnd() > 0.985 ? rnd() * 0.5 : 0;
+    // couleur : 236..255, assombrie ponctuellement par les éclats
+    const c = Math.round(238 + fine * 17 - fleck * 90);
+    // rugosité : base mate avec micro-variations + éclats plus lisses
+    const r = Math.round(196 + fine * 40 - fleck * 120);
+    const o = i * 4;
+    grainImg.data[o] = c;
+    grainImg.data[o + 1] = c;
+    grainImg.data[o + 2] = Math.min(255, c + 2);
+    grainImg.data[o + 3] = 255;
+    roughImg.data[o] = r;
+    roughImg.data[o + 1] = r;
+    roughImg.data[o + 2] = r;
+    roughImg.data[o + 3] = 255;
+  }
+  a.ctx.putImageData(grainImg, 0, 0);
+  b.ctx.putImageData(roughImg, 0, 0);
+
+  const grain = new CanvasTexture(a.canvas);
+  grain.colorSpace = SRGBColorSpace;
+  const rough = new CanvasTexture(b.canvas);
+
+  for (const t of [grain, rough]) {
+    t.wrapS = RepeatWrapping;
+    t.wrapT = RepeatWrapping;
+    t.anisotropy = 4;
+    t.needsUpdate = true;
+  }
+
+  benchTexturesCache = { grain, rough };
+  return benchTexturesCache;
+}
+
+/** Clone les textures partagées avec le bon nombre de répétitions pour `size`. */
+function useBenchTextures(size: number): { grain: Texture; rough: Texture } | null {
+  const cloned = useMemo(() => {
+    const base = getBenchTextures();
+    if (!base) return null;
+    const repeat = Math.max(1, Math.round(size / 2));
+    const grain = base.grain.clone();
+    const rough = base.rough.clone();
+    for (const t of [grain, rough]) {
+      t.repeat.set(repeat, repeat);
+      t.needsUpdate = true;
+    }
+    return { grain, rough };
+  }, [size]);
+
+  useEffect(() => {
+    if (!cloned) return;
+    return () => {
+      cloned.grain.dispose();
+      cloned.rough.dispose();
+    };
+  }, [cloned]);
+
+  return cloned;
+}
+
+/**
+ * Paillasse de labo (plateau stratifié + plinthe). Pose les objets dessus.
+ *
+ * Matière : résine mate mouchetée avec un vernis très diffus (clearcoat), qui
+ * capte un large reflet du plafonnier du studio → la surface a une orientation
+ * lisible et les objets paraissent vraiment posés.
+ */
 export function LabBench({ y = -1.5, color = '#E8E2D6', size = 22 }: { y?: number; color?: string; size?: number }) {
+  const tex = useBenchTextures(size);
   return (
     <group position={[0, y, 0]}>
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[size, size]} />
-        <meshStandardMaterial color={color} roughness={0.85} metalness={0.02} side={DoubleSide} />
+        <meshPhysicalMaterial
+          color={color}
+          map={tex?.grain ?? null}
+          roughnessMap={tex?.rough ?? null}
+          roughness={0.72}
+          metalness={0.02}
+          clearcoat={0.3}
+          clearcoatRoughness={0.55}
+          envMapIntensity={0.55}
+          side={DoubleSide}
+        />
       </mesh>
       {/* fine plinthe pour donner de l'épaisseur au plateau */}
       <mesh position={[0, -0.06, 0]}>
         <boxGeometry args={[size, 0.12, size]} />
-        <meshStandardMaterial color="#C9C1B0" roughness={0.9} />
+        <meshStandardMaterial color="#BCB4A2" roughness={0.78} metalness={0.03} envMapIntensity={0.5} />
       </mesh>
     </group>
   );
@@ -56,9 +193,10 @@ export function GraphPaper({
 
   return (
     <group>
-      <mesh position={[0, 0, z - 0.02]}>
+      <mesh position={[0, 0, z - 0.02]} receiveShadow>
         <planeGeometry args={[width, height]} />
-        <meshStandardMaterial color="#FFFFFF" roughness={0.95} />
+        {/* papier : mat, et peu sensible à l'environnement pour rester blanc */}
+        <meshStandardMaterial color="#FFFFFF" roughness={0.92} metalness={0} envMapIntensity={0.3} />
       </mesh>
       {lines.map((s, i) => (
         <Segment key={i} a={s[0]} b={s[1]} color={color} width={0.006} />
