@@ -3,7 +3,8 @@
 /**
  * Vérification visuelle DEV des scènes Lab Premium (sans auth). À supprimer avant prod.
  *
- * Couvre les 35 scènes réécrites dans la vague courante. Paginé par `?batch=N`
+ * Couvre les 87 scènes 3D du projet (toutes les simulations migrées au kit
+ * `@/components/lab3d`). Paginé par `?batch=N`
  * (6 scènes par lot) pour ne pas dépasser la limite de contextes WebGL du
  * navigateur. Sert à détecter les crashs runtime que `tsc` ne voit pas
  * (ex : hook R3F hors Canvas, NaN de géométrie).
@@ -67,6 +68,52 @@ const SPh = dynamic(() => import('@/simulations/ph-solutions-3eme/ph-scene'), { 
 const SAtom = dynamic(() => import('@/simulations/tableau-periodique-2nde/scene'), { ssr: false, loading });
 const SMolecules = dynamic(() => import('@/simulations/atomes-molecules-4eme/molecules-scene'), { ssr: false, loading });
 
+// — Vague « migration kit lab3d » (44 scènes restantes) —
+const SChain = dynamic(() => import('@/simulations/alimentation-animale-6eme/chain-scene'), { ssr: false, loading });
+const SBandia = dynamic(() => import('@/simulations/biodiversite-bandia-2nde/scene'), { ssr: false, loading });
+const SAires = dynamic(() => import('@/simulations/calcul-litteral-4eme/aires-scene'), { ssr: false, loading });
+const SProtractor = dynamic(() => import('@/simulations/cercle-droites-angles-6eme/protractor-scene'), { ssr: false, loading });
+const SHeating = dynamic(() => import('@/simulations/changements-etat-6eme/heating-scene'), { ssr: false, loading });
+const SHeart = dynamic(() => import('@/simulations/circulation-sanguine-5eme/heart-scene'), { ssr: false, loading });
+const SClassif = dynamic(() => import('@/simulations/classification-vivant-6eme/scene'), { ssr: false, loading });
+const SClimat = dynamic(() => import('@/simulations/climat-terminale/scene'), { ssr: false, loading });
+const SIncub = dynamic(() => import('@/simulations/cycle-vie-6eme/lifecycle-scene'), { ssr: false, loading });
+const SDigest = dynamic(() => import('@/simulations/digestion-5eme/digestive-scene'), { ssr: false, loading });
+const SEnergie = dynamic(() => import('@/simulations/energie-mecanique-1ere/scene'), { ssr: false, loading });
+const SEvol = dynamic(() => import('@/simulations/evolution-especes-1ere/scene'), { ssr: false, loading });
+const SDecimal = dynamic(() => import('@/simulations/fractions-decimaux-5eme/decimal-scene'), { ssr: false, loading });
+const SFraction = dynamic(() => import('@/simulations/fractions-simples-6eme/fraction-scene'), { ssr: false, loading });
+const SPunnett = dynamic(() => import('@/simulations/genetique-mendel-3eme/punnett-scene'), { ssr: false, loading });
+const SGene = dynamic(() => import('@/simulations/genetique-moleculaire-terminale/scene'), { ssr: false, loading });
+const SSpace = dynamic(() => import('@/simulations/geometrie-espace-terminale/scene'), { ssr: false, loading });
+const SMeteo = dynamic(() => import('@/simulations/graphiques-meteo-6eme/meteo-scene'), { ssr: false, loading });
+const SGlyc = dynamic(() => import('@/simulations/hormones-1ere/scene'), { ssr: false, loading });
+const SInteg = dynamic(() => import('@/simulations/integration-terminale/scene'), { ssr: false, loading });
+const SOhm = dynamic(() => import('@/simulations/loi-dohm-3eme/ohm-scene'), { ssr: false, loading });
+const SMangrove = dynamic(() => import('@/simulations/mangrove-saloum-6eme/mangrove-scene'), { ssr: false, loading });
+const SDensity = dynamic(() => import('@/simulations/masse-volume-densite-6eme/scene'), { ssr: false, loading });
+const SDivision = dynamic(() => import('@/simulations/meiose-mitose-terminale/scene'), { ssr: false, loading });
+const SWaterMol = dynamic(() => import('@/simulations/molecule-eau-4eme/water-scene'), { ssr: false, loading });
+const SAbaque = dynamic(() => import('@/simulations/numeration-6eme/abaque-scene'), { ssr: false, loading });
+const SField = dynamic(() => import('@/simulations/perimetres-aires-6eme/field-scene'), { ssr: false, loading });
+const SPhoto = dynamic(() => import('@/simulations/photosynthese-4eme/scene'), { ssr: false, loading });
+const SStore = dynamic(() => import('@/simulations/pourcentages-5eme/store-scene'), { ssr: false, loading });
+const SCycleProc = dynamic(() => import('@/simulations/procreation-humaine-3eme/cycle-scene'), { ssr: false, loading });
+const SCubes = dynamic(() => import('@/simulations/puissances-4eme/cubes-scene'), { ssr: false, loading });
+const SFecond = dynamic(() => import('@/simulations/reproduction-animale-4eme/fecondation-scene'), { ssr: false, loading });
+const SFlower = dynamic(() => import('@/simulations/reproduction-plantes-4eme/flower-scene'), { ssr: false, loading });
+const SLungs = dynamic(() => import('@/simulations/respiration-5eme/lungs-scene'), { ssr: false, loading });
+const SMito = dynamic(() => import('@/simulations/respiration-cellulaire-1ere/scene'), { ssr: false, loading });
+const SSoil = dynamic(() => import('@/simulations/sol-vivant-5eme/soil-scene'), { ssr: false, loading });
+const SCobweb = dynamic(() => import('@/simulations/suites-terminale/scene'), { ssr: false, loading });
+const SSym = dynamic(() => import('@/simulations/symetrie-axiale-5eme/scene'), { ssr: false, loading });
+const SImmune = dynamic(() => import('@/simulations/systeme-immunitaire-3eme/immune-scene'), { ssr: false, loading });
+const SNeurone = dynamic(() => import('@/simulations/systeme-nerveux-3eme/neurone-scene'), { ssr: false, loading });
+const SPytha = dynamic(() => import('@/simulations/theoreme-pythagore-4eme/pythagore-scene'), { ssr: false, loading });
+const SThermo = dynamic(() => import('@/simulations/thermometre-tropical-6eme/thermometer-scene'), { ssr: false, loading });
+const STriangle = dynamic(() => import('@/simulations/triangles-5eme/triangle-scene'), { ssr: false, loading });
+const SVih = dynamic(() => import('@/simulations/vih-immunite-terminale/scene'), { ssr: false, loading });
+
 const PER = 6;
 
 function tiles(): { title: string; node: React.ReactNode }[] {
@@ -117,6 +164,171 @@ function tiles(): { title: string; node: React.ReactNode }[] {
     { title: '★ tectonique-plaques-1ere', node: <STecto tension={0.85} /> },
     { title: '★ desintegration-rad-tle', node: <SDecay time={11460} /> },
     { title: '★ probabilites-1ere', node: <SProb trials={500} /> },
+    {
+      title: '★★ alimentation-animale-6eme',
+      node: (
+        <SChain
+          clicked={['mil', 'criquet']}
+          next="margouillat"
+          onPick={() => {}}
+          showImpact
+          counts={{ mil: 120, criquet: 60, margouillat: 24, rapace: 6 }}
+          survie={0.6}
+        />
+      ),
+    },
+    {
+      title: '★★ biodiversite-bandia-2nde',
+      node: (
+        <SBandia
+          zoneName="Savane arborée"
+          zoneSub="Réserve de Bandia"
+          background="#DCC9A0"
+          patch="#8FAE6B"
+          draws={[[0, 1, 2], [1, 3], [0, 2, 3]]}
+          counts={[4, 3, 2, 2]}
+          accumulation={[3, 4, 4]}
+          colors={['#16A34A', '#F59E0B', '#2563EB', '#DC2626']}
+          names={['Acacia', 'Baobab', 'Palmier', 'Euphorbe']}
+          richness={4}
+          shannon={1.32}
+          total={11}
+        />
+      ),
+    },
+    { title: '★★ calcul-litteral-4eme', node: <SAires a={3} b={2} c={4} d={1} spread mode="developper" /> },
+    {
+      title: '★★ cercle-droites-angles-6eme',
+      node: <SProtractor mode="rapporteur" focus="segment" rayon={4} base={0} cursor={50} dirA={0} target={50} caption="Angle AÔB" />,
+    },
+    { title: '★★ changements-etat-6eme', node: <SHeating time={150} marks={[[0, -10], [60, 0], [120, 0], [180, 45]]} /> },
+    { title: '★★ circulation-sanguine-5eme', node: <SHeart bpm={78} focus="double" /> },
+    { title: '★★ classification-vivant-6eme', node: <SClassif sample="plume" zoom={2} /> },
+    { title: '★★ climat-terminale', node: <SClimat co2={520} albedo={0.3} /> },
+    { title: '★★ cycle-vie-6eme', node: <SIncub day={14} sizeMm={38} stage="Formation des plumes" /> },
+    { title: '★★ digestion-5eme', node: <SDigest view="tube" organ={2} minutes={20} iodine /> },
+    { title: '★★ energie-mecanique-1ere', node: <SEnergie h0={1.2} mass={0.05} mu={0.08} g={9.78} hMax={1.5} xMax={2.5} runId={1} /> },
+    { title: '★★ evolution-especes-1ere', node: <SEvol view="frequences" pR={[0.1, 0.22, 0.4, 0.6, 0.78, 0.9]} generation={3} pression={0.6} /> },
+    { title: '★★ fractions-decimaux-5eme', node: <SDecimal u={3} d={4} c={7} zoom={1} /> },
+    { title: '★★ fractions-simples-6eme', node: <SFraction num={3} den={8} refNum={1} refDen={2} /> },
+    {
+      title: '★★ genetique-mendel-3eme',
+      node: (
+        <SPunnett
+          view="echiquier"
+          label="Nn × Nn"
+          sublabel="Croisement de deux hybrides"
+          p1="Nn"
+          p2="Nn"
+          gam1={['N', 'n']}
+          gam2={['N', 'n']}
+          cells={['NN', 'Nn', 'Nn', 'nn']}
+          revealed={4}
+          expected={{ NN: 0.25, Nn: 0.5, nn: 0.25 }}
+          observed={{ NN: 24, Nn: 51, nn: 25 }}
+          total={100}
+        />
+      ),
+    },
+    {
+      title: '★★ genetique-moleculaire-tle',
+      node: (
+        <SGene
+          phase="traduction"
+          nt={21}
+          codonIndex={4}
+          template="TACGGCTTAAGCCATGACATT"
+          mrna="AUGCCGAAUUCGGUACUGUAA"
+          aminos={['Met', 'Pro', 'Asn', 'Ser', 'Val', 'Leu', 'STOP']}
+          mutIndex={7}
+        />
+      ),
+    },
+    { title: '★★ geometrie-espace-terminale', node: <SSpace a={1} b={1} c={1} d={-1.5} /> },
+    {
+      title: '★★ graphiques-meteo-6eme',
+      node: (
+        <SMeteo
+          cityName="Ziguinchor"
+          rain={[0, 0, 0, 0, 1, 15, 89, 241, 163, 42, 2, 0]}
+          temp={[21, 21, 22, 22, 24, 27, 28, 28, 28, 28, 26, 22]}
+          month={7}
+          placed={[0, 1, 2, 3, 4, 5, 6, 7]}
+        />
+      ),
+    },
+    {
+      title: '★★ hormones-1ere',
+      node: (
+        <SGlyc
+          glycemie={1.6}
+          insuline={0.8}
+          glucagon={0.1}
+          glycogene={0.55}
+          historique={[0.9, 1.1, 1.5, 1.8, 1.6, 1.3]}
+          diabete={false}
+          etat="Après le repas"
+        />
+      ),
+    },
+    { title: '★★ integration-terminale', node: <SInteg fnKey="canal" b={3} n={8} mode="riemann" /> },
+    {
+      title: '★★ loi-dohm-3eme',
+      node: <SOhm e={9} rh={20} i={0.18} u={3.6} slope={20} points={[{ i: 0.05, u: 1 }, { i: 0.1, u: 2 }, { i: 0.18, u: 3.6 }]} />,
+    },
+    {
+      title: '★★ mangrove-saloum-6eme',
+      node: <SMangrove mangrove niveau={0.8} juveniles={34} recul={0.4} title="Bolong de Toubacouta" subtitle="Quadrat de 1 m² dans les racines" />,
+    },
+    {
+      title: '★★ masse-volume-densite-6eme',
+      node: <SDensity label="Cube d'aluminium" color="#94A3B8" metal shape="cube" mass={54} volume={20} v0={50} vMax={100} weighed immersed />,
+    },
+    { title: '★★ meiose-mitose-terminale', node: <SDivision mode="meiose" phase={2} /> },
+    { title: '★★ molecule-eau-4eme', node: <SWaterMol mode="polarite" angle={104.5} /> },
+    { title: '★★ numeration-6eme', node: <SAbaque digits={{ m: 2, c: 4, d: 0, u: 7 }} value={2407} grouping={null} groupKey={0} /> },
+    { title: '★★ perimetres-aires-6eme', node: <SField longueur={12} largeur={8} compare refLongueur={16} refLargeur={4} /> },
+    {
+      title: '★★ photosynthese-4eme',
+      node: (
+        <SPhoto
+          light={60}
+          rate={28}
+          maxRate={40}
+          curve={[[0, 0], [20, 14], [40, 23], [60, 28], [80, 31], [100, 32]]}
+          points={[[20, 13], [60, 29]]}
+        />
+      ),
+    },
+    { title: '★★ pourcentages-5eme', node: <SStore price={12000} rate={25} mode="remise" /> },
+    { title: '★★ procreation-humaine-3eme', node: <SCycleProc view="cycle" day={14} devDay={3} phaseLabel="Ovulation" stageLabel="Morula" /> },
+    {
+      title: '★★ puissances-4eme',
+      node: (
+        <SCubes
+          view="echelle"
+          exponent={2}
+          marks={[{ label: 'Grain de mil', exp: -3, ok: true }, { label: 'Baobab', exp: 1, ok: true }]}
+          notation="1,5 × 10³ m"
+        />
+      ),
+    },
+    { title: '★★ reproduction-animale-4eme', node: <SFecond species="tilapia" stage={2} label="Fécondation externe" /> },
+    { title: '★★ reproduction-plantes-4eme', node: <SFlower layer={2} vector="insecte" stage="Étamines dégagées" /> },
+    { title: '★★ respiration-5eme', node: <SLungs view="thorax" freq={16} /> },
+    { title: '★★ respiration-cellulaire-1ere', node: <SMito view="mitochondrie" glucose={1} aerobie /> },
+    {
+      title: '★★ sol-vivant-5eme',
+      node: <SSoil mode="coupe" soil="deck" title="Sol deck" subtitle="Bassin arachidier" horizon="humus" percole={62} duree={45} />,
+    },
+    { title: '★★ suites-terminale', node: <SCobweb u0={2} a={0.6} b={4} unit="milliers" dec={1} limit={10} verdict="Suite convergente vers 10" /> },
+    { title: '★★ symetrie-axiale-5eme', node: <SSym angle={20} mIndex={1} fold={false} /> },
+    { title: '★★ systeme-immunitaire-3eme', node: <SImmune view="memoire" peauIntacte={false} rappel jour={14} taux={820} /> },
+    { title: '★★ systeme-nerveux-3eme', node: <SNeurone view="arc" myelin speed={60} reflexMs={45} /> },
+    { title: '★★ theoreme-pythagore-4eme', node: <SPytha a={3} b={4} mode="aires" cTest={5} transfer /> },
+    { title: '★★ thermometre-tropical-6eme', node: <SThermo temperature={34} milieuLabel="Sable au soleil" milieuKind="sable" /> },
+    { title: '★★ triangles-5eme', node: <STriangle a={6} b={5} c={4} nature="Triangle quelconque" droites="medianes" showReport /> },
+    { title: '★★ vih-immunite-terminale', node: <SVih view="courbes" mois={72} traitement debutTraitement={60} /> },
   ];
 }
 
