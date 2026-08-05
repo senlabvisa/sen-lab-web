@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ArrowRight, CheckCircle2, Crosshair, Gauge, Rocket, Target } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Crosshair, Gauge, Rocket, Target, Wind } from 'lucide-react';
 import type { SimulationModuleProps } from '@senlabvisa/shared-types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,8 @@ export function MecaniqueNewtonTerminale({ onComplete, busy }: SimulationModuleP
   const [anglesTried, setAnglesTried] = useState<Set<number>>(new Set([30]));
   const [hypo, setHypo] = useState<HypoRep>(null);
   const [best, setBest] = useState<{ angle: number; range: number } | null>(null);
+  const [frottement, setFrottement] = useState(false);
+  const [lastSaved, setLastSaved] = useState<{ v0: number; angle: number } | null>(null);
 
   const [qForme, setQForme] = useState<string | null>(null);
   const [qPortee, setQPortee] = useState<string | null>(null);
@@ -63,9 +65,19 @@ export function MecaniqueNewtonTerminale({ onComplete, busy }: SimulationModuleP
 
   const cur = useMemo(() => physics(v0, angle), [v0, angle]);
 
+  /**
+   * Essai précédent affiché en fantôme dans la scène : seulement s'il diffère
+   * du réglage courant (sinon les deux courbes se superposeraient).
+   */
+  const ghost = useMemo(
+    () => (lastSaved && (lastSaved.angle !== angle || lastSaved.v0 !== v0) ? lastSaved : null),
+    [lastSaved, angle, v0],
+  );
+
   function recordMeasure() {
     setAnglesTried((prev) => new Set(prev).add(angle));
     setBest((b) => (!b || cur.range > b.range ? { angle, range: cur.range } : b));
+    setLastSaved({ v0, angle });
   }
 
   const score = useMemo(() => {
@@ -87,6 +99,7 @@ export function MecaniqueNewtonTerminale({ onComplete, busy }: SimulationModuleP
           anglesTried: Array.from(anglesTried),
           best,
           hypothesis: hypo,
+          frottement,
           qcm: { qForme, qPortee, qVitesse },
         },
       },
@@ -166,12 +179,13 @@ export function MecaniqueNewtonTerminale({ onComplete, busy }: SimulationModuleP
             <Badge tone="physique">2/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            Fais varier la vitesse et l&apos;angle. Observe la trajectoire et la portée. Tourne la scène avec ta
-            souris / ton doigt.
+            Fais varier la vitesse et l&apos;angle. La mangue <strong>dessine sa trajectoire</strong> au fur et à
+            mesure : suis la légende « 1/4, 2/4… » pour savoir ce que tu regardes. Tourne la scène avec ta souris /
+            ton doigt.
           </p>
           <div className="overflow-hidden rounded-2xl ring-1 ring-amber-100">
             <div className="aspect-[4/3] w-full">
-              <ProjScene v0={v0} angle={angle} g={G} />
+              <ProjScene v0={v0} angle={angle} g={G} frottement={frottement} ghost={ghost} />
             </div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -191,9 +205,23 @@ export function MecaniqueNewtonTerminale({ onComplete, busy }: SimulationModuleP
             </div>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-            <Stat label="Portée" value={`${cur.range.toFixed(1)} m`} />
+            <Stat label="Portée (modèle)" value={`${cur.range.toFixed(1)} m`} />
             <Stat label="Flèche" value={`${cur.height.toFixed(1)} m`} />
             <Stat label="Durée vol" value={`${cur.flight.toFixed(1)} s`} />
+          </div>
+          <div className="mt-3 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-100">
+            <Button
+              variant={frottement ? 'gradient' : 'outline'}
+              size="sm"
+              onClick={() => setFrottement((f) => !f)}
+            >
+              <Wind className="h-4 w-4" /> Frottement de l&apos;air : {frottement ? 'activé' : 'désactivé'}
+            </Button>
+            <p className="mt-2 text-xs text-amber-900/80">
+              {frottement
+                ? "L'air freine la mangue : compare dans la scène la portée mesurée et celle prévue par le modèle."
+                : 'Modèle du cours : seul le poids agit. Active le frottement pour voir ce que change l’air réel.'}
+            </p>
           </div>
           <div className="mt-4 flex items-center justify-between gap-2">
             <Button variant="soft" size="sm" onClick={recordMeasure}>
@@ -204,6 +232,12 @@ export function MecaniqueNewtonTerminale({ onComplete, busy }: SimulationModuleP
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
+          {lastSaved && (
+            <p className="mt-3 text-xs text-ink/55">
+              Ton dernier essai enregistré ({lastSaved.angle}° à {lastSaved.v0} m/s) reste affiché en{' '}
+              <strong>trace grise</strong> dans la scène : change d&apos;angle et compare les deux courbes.
+            </p>
+          )}
         </Card>
       )}
 

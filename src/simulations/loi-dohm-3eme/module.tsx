@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Activity, ArrowRight, CheckCircle2, Gauge, LineChart, Save, Zap } from 'lucide-react';
+import { Activity, ArrowRight, CheckCircle2, Gauge, LineChart, Save, Search, Zap } from 'lucide-react';
 import type { SimulationModuleProps } from '@senlabvisa/shared-types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,8 @@ const MAX_POINTS = 8;
 type Step = 'intro' | 'hypo' | 'manip' | 'mesures' | 'qcm' | 'done';
 type HypoRep = 'double' | 'identique' | 'moitie' | null;
 type Point = { i: number; u: number; e: number; rh: number };
+/** Appareil isolé dans la scène 3D (le reste du circuit est atténué). */
+type Focus = 'none' | 'amperemetre' | 'voltmetre';
 
 const INTRO =
   "Dans l'atelier du quartier, le tailleur branche son fer à repasser sur le compteur Woyofal. " +
@@ -80,6 +82,7 @@ export function LoiDohm3eme({ onComplete, busy }: SimulationModuleProps) {
   const [rh, setRh] = useState(10);
   const [points, setPoints] = useState<Point[]>([]);
   const [hypo, setHypo] = useState<HypoRep>(null);
+  const [focus, setFocus] = useState<Focus>('none');
 
   const [qForme, setQForme] = useState<string | null>(null);
   const [qPente, setQPente] = useState<string | null>(null);
@@ -210,8 +213,42 @@ export function LoiDohm3eme({ onComplete, busy }: SimulationModuleProps) {
           </p>
           <div className="overflow-hidden rounded-2xl ring-1 ring-blue-100">
             <div className="aspect-[4/3] w-full">
-              <OhmScene e={e} rh={rh} i={cur.i} u={cur.u} slope={slope} points={points} />
+              <OhmScene
+                e={e}
+                rh={rh}
+                i={cur.i}
+                u={cur.u}
+                slope={slope}
+                points={points}
+                focus={focus}
+                trueR={R_OHM}
+                minPoints={MIN_POINTS}
+              />
             </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-blue-50/60 p-2 ring-1 ring-blue-100">
+            <span className="flex items-center gap-1 text-xs font-semibold text-blue-800">
+              <Search className="h-3.5 w-3.5" /> Coup de projecteur sur le branchement :
+            </span>
+            <Button
+              size="sm"
+              variant={focus === 'amperemetre' ? 'gradient' : 'outline'}
+              onClick={() => setFocus((f) => (f === 'amperemetre' ? 'none' : 'amperemetre'))}
+            >
+              Ampèremètre (série)
+            </Button>
+            <Button
+              size="sm"
+              variant={focus === 'voltmetre' ? 'gradient' : 'outline'}
+              onClick={() => setFocus((f) => (f === 'voltmetre' ? 'none' : 'voltmetre'))}
+            >
+              Voltmètre (dérivation)
+            </Button>
+            {focus !== 'none' && (
+              <Button size="sm" variant="ghost" onClick={() => setFocus('none')}>
+                Tout rallumer
+              </Button>
+            )}
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
@@ -359,7 +396,7 @@ export function LoiDohm3eme({ onComplete, busy }: SimulationModuleProps) {
               ]}
               value={qBranchement}
               onChange={setQBranchement}
-              hint="Regarde comment les fils bleus du voltmètre sont posés dans la scène."
+              hint="Reviens à la scène et utilise le coup de projecteur : l’ampèremètre est traversé par tout le courant, le voltmètre est posé à côté du dipôle."
             />
           </div>
           <div className="mt-5 flex justify-end gap-2">

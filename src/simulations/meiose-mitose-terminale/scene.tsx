@@ -1,21 +1,54 @@
 'use client';
 
 import { useMemo, useRef } from 'react';
-import { DoubleSide, Group, Vector3, type Vector3Tuple } from 'three';
-import { LabScene } from '@/components/lab/lab-scene';
-import { Segment } from '@/components/lab3d/environment';
-import { Readout, SceneLabel, Tag3D } from '@/components/lab3d/annotations';
-import { Animate } from '@/components/lab3d/anim';
+import { DoubleSide, Group, type Vector3Tuple } from 'three';
+import {
+  Animate,
+  CompareCard,
+  FocusHalo,
+  Float,
+  GhostState,
+  LabScene,
+  LegendCard,
+  Readout,
+  SceneLabel,
+  Segment,
+  StepNarration,
+  Tag3D,
+  easeInOut,
+  easeOut,
+  easeOutBack,
+  mix,
+  type EasingFn,
+  type LegendItem,
+  type NarrationStep,
+} from '@/components/lab3d';
 
 /**
  * Scène 3D — les divisions cellulaires (SVT, Terminale S, Bac).
  *
  * Chromosomes en volume : deux chromatides sœurs (capsules) reliées par un
  * centromère, bleu = homologue d'origine paternelle, rouge = maternelle.
+ * Le bout de chaque bras porte un repère de FORME (cube = paternel, pointe =
+ * maternel) : la couleur n'est jamais la seule information.
+ *
  * Le curseur de phase déplace réellement les chromosomes (condensation →
  * plaque équatoriale → migration aux pôles → cellules filles) ; le fuseau
  * achromatique est tracé en <Segment> entre les centrosomes et les
  * centromères.
+ *
+ * Mouvement (kit lab3d) :
+ *  - migration vers les pôles : `easeInOut` → les chromosomes accélèrent puis
+ *    DÉCÉLÈRENT en arrivant au pôle (au lieu d'une interpolation linéaire) ;
+ *  - alignement sur la plaque : `easeOutBack` → ils se posent fermement,
+ *    comme tirés des deux côtés à la fois ;
+ *  - chromosomes libres (interphase, télophase) : <Float> — flottement
+ *    déterministe (bruit fbm, jamais Math.random).
+ *
+ * Pédagogie (kit lab3d) : <StepNarration> (où en est la division),
+ * <GhostState> (trace de la plaque équatoriale pendant l'anaphase),
+ * <FocusHalo> (point de crossing-over), <CompareCard> (mitose vs méiose),
+ * <LegendCard> (forme + couleur).
  *
  * Mitose (2n = 4) : 1 division → 2 cellules à 2n = 4.
  * Méiose (2n = 4) : 2 divisions → 4 cellules à n = 2, avec crossing-over en
@@ -51,10 +84,13 @@ type Stage = {
   title: string;
   nChr: number;
   adn: number;
+  /** Détail que l'élève rate : mis en évidence par un halo qui respire. */
+  focus?: { pos: Vector3Tuple; radius: number; label: string };
 };
 
 const PAT = '#2563EB'; // homologue d'origine paternelle
 const MAT = '#DC2626'; // homologue d'origine maternelle
+const CROSS = '#7C3AED'; // jonction créée par le crossing-over
 const LONG = 0.22;
 const SHORT = 0.13;
 const R1 = 1.5; // cellule mère
@@ -96,6 +132,26 @@ const REC_MAT: Arm[] = [
   [MAT, MAT],
   [PAT, MAT],
 ];
+
+/** Fil des phases affiché dans la scène (<StepNarration>). */
+const NARRATION: Record<DivisionMode, NarrationStep[]> = {
+  mitose: [
+    { label: 'Interphase', detail: "L'ADN est répliqué : chaque chromosome a 2 chromatides sœurs." },
+    { label: 'Prophase', detail: 'Les chromosomes se condensent, le fuseau achromatique se construit.' },
+    { label: 'Métaphase', detail: 'Les chromosomes s’alignent sur la plaque équatoriale.' },
+    { label: 'Anaphase', detail: 'Les centromères se clivent : les chromatides sœurs migrent aux pôles.' },
+    { label: 'Télophase & cytodiérèse', detail: '2 cellules filles à 2n = 4 : des copies conformes.' },
+  ],
+  meiose: [
+    { label: 'Interphase', detail: 'Une seule réplication de l’ADN pour les deux divisions.' },
+    { label: 'Prophase I', detail: 'Les homologues s’apparient : c’est le crossing-over.' },
+    { label: 'Métaphase I', detail: 'Les bivalents s’alignent, orientés au hasard.' },
+    { label: 'Anaphase I', detail: 'Les homologues ENTIERS migrent : les centromères restent intacts.' },
+    { label: 'Télophase I', detail: '2 cellules à n = 2 : la réduction chromatique est faite.' },
+    { label: 'Métaphase II', detail: 'Deux nouvelles plaques, sans nouvelle réplication.' },
+    { label: 'Ana/télophase II', detail: 'Les centromères se clivent : 4 gamètes tous différents.' },
+  ],
+};
 
 function asters(px: number): Fiber[] {
   return [
@@ -250,13 +306,11 @@ function buildMeiose(phase: number): Stage {
       poles: [[-POLE, 0, 0], [POLE, 0, 0]],
       fibers: [...asters(-POLE), ...asters(POLE)],
       plates: [],
-      tags: [
-        { pos: [-0.46, 0.98, 0.14], label: 'Crossing-over' },
-        { pos: [0.49, -0.92, -0.14], label: 'Bivalent (paire d’homologues)' },
-      ],
+      tags: [{ pos: [0.49, -0.92, -0.14], label: 'Bivalent (paire d’homologues)' }],
       title: 'Prophase I — appariement & crossing-over',
       nChr: 4,
       adn: 4,
+      focus: { pos: [-0.46, 0.38, 0.16], radius: 0.44, label: 'Crossing-over' },
     };
   }
   // Orientation au hasard des bivalents = brassage interchromosomique.
@@ -378,11 +432,37 @@ function buildMeiose(phase: number): Stage {
   };
 }
 
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Corps 3D                                                                   */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Télomère repère : la FORME dit l'origine du bras (cube = paternel,
+ * pointe = maternel). Un élève daltonien lit la scène sans la couleur.
+ */
+function Telomere({ color, y, r, down }: { color: string; y: number; r: number; down: boolean }) {
+  if (color === PAT) {
+    return (
+      <mesh position={[0, y, 0]}>
+        <boxGeometry args={[r * 1.7, r * 1.7, r * 1.7]} />
+        <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
+      </mesh>
+    );
+  }
+  return (
+    <mesh position={[0, y, 0]} rotation={[down ? Math.PI : 0, 0, 0]}>
+      <coneGeometry args={[r * 1.25, r * 2.2, 6]} />
+      <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
+    </mesh>
+  );
+}
+
 /** Un chromosome : 1 ou 2 chromatides (capsules) + centromère. */
 function ChromoBody({ arms, len, thin }: { arms: Arm[]; len: number; thin?: boolean }) {
   const r = thin ? 0.026 : 0.055;
   const dx = arms.length === 2 ? (thin ? 0.034 : 0.068) : 0;
   const gap = 0.045;
+  const tip = len + gap + r * 0.95;
   return (
     <group>
       {arms.map((arm, i) => (
@@ -395,6 +475,15 @@ function ChromoBody({ arms, len, thin }: { arms: Arm[]; len: number; thin?: bool
             <capsuleGeometry args={[r, len, 6, 12]} />
             <meshStandardMaterial color={arm[1]} roughness={0.35} metalness={0.05} />
           </mesh>
+          <Telomere color={arm[0]} y={tip} r={r} down={false} />
+          <Telomere color={arm[1]} y={-tip} r={r} down />
+          {/* Bras de deux origines = chromatide recombinée : on marque la jonction. */}
+          {arm[0] !== arm[1] && (
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[r * 1.55, r * 0.5, 6, 16]} />
+              <meshStandardMaterial color={CROSS} roughness={0.3} emissive={CROSS} emissiveIntensity={0.25} />
+            </mesh>
+          )}
         </group>
       ))}
       <mesh>
@@ -402,6 +491,24 @@ function ChromoBody({ arms, len, thin }: { arms: Arm[]; len: number; thin?: bool
         <meshStandardMaterial color="#F8FAFC" roughness={0.5} emissive="#CBD5E1" emissiveIntensity={0.2} />
       </mesh>
     </group>
+  );
+}
+
+/**
+ * Chromosome décondensé, non accroché au fuseau : il flotte doucement dans le
+ * nucléoplasme. Bruit déterministe (<Float>) → jamais de Math.random au rendu.
+ * Le flottement est porté par un groupe INTERNE : la migration pilote le
+ * groupe externe, personne n'écrit deux fois la même position.
+ */
+function FloatingChromo({ chromo, seed }: { chromo: Chromo; seed: number }) {
+  const inner = useRef<Group>(null);
+  return (
+    <>
+      <group ref={inner}>
+        <ChromoBody arms={chromo.arms} len={chromo.len} thin={chromo.thin} />
+      </group>
+      <Float objectRef={inner} amplitude={0.026} speed={0.28} seed={seed} rotation={0.07} base={[0, 0, 0]} octaves={2} />
+    </>
   );
 }
 
@@ -421,10 +528,53 @@ function Centrosome({ p }: { p: Vector3Tuple }) {
   );
 }
 
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Mouvement                                                                  */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/** Anaphases : c'est là que la décélération à l'arrivée au pôle se voit. */
+const isAnaphase = (mode: DivisionMode, phase: number) =>
+  mode === 'mitose' ? phase === 3 : phase === 3 || phase === 6;
+/** Métaphases : mise en place ferme sur la plaque équatoriale. */
+const isMetaphase = (mode: DivisionMode, phase: number) =>
+  mode === 'mitose' ? phase === 2 : phase === 2 || phase === 5;
+
+/** Durée du déplacement, en secondes. */
+const DUR_ANA = 1.5;
+const DUR_STD = 0.95;
+
 export default function DivisionScene({ mode, phase }: DivisionSceneProps) {
   const stage = useMemo(() => (mode === 'mitose' ? buildMitose(phase) : buildMeiose(phase)), [mode, phase]);
+
+  /** Phase précédente gardée en trace pendant l'anaphase (<GhostState>). */
+  const ghost = useMemo(() => {
+    if (!isAnaphase(mode, phase)) return null;
+    return mode === 'mitose' ? buildMitose(phase - 1) : buildMeiose(phase - 1);
+  }, [mode, phase]);
+
+  const ana = isAnaphase(mode, phase);
+  const meta = isMetaphase(mode, phase);
+  // Migration : élan puis DÉCÉLÉRATION à l'arrivée au pôle (jamais linéaire).
+  // Plaque équatoriale : léger dépassement puis calage, comme tiré des 2 côtés.
+  const easing: EasingFn = ana ? easeInOut : meta ? easeOutBack : easeOut;
+  const dur = ana ? DUR_ANA : DUR_STD;
+
   const refs = useRef<Map<string, Group>>(new Map());
-  const tmp = useMemo(() => new Vector3(), []);
+  const starts = useRef<Map<string, [number, number, number, number]>>(new Map());
+  const elapsed = useRef(0);
+  const lastKey = useRef('');
+  const stageKey = `${mode}:${phase}`;
+
+  const legend = useMemo<LegendItem[]>(() => {
+    const base: LegendItem[] = [
+      { label: 'Origine paternelle', color: PAT, shape: 'square', note: 'bouts carrés' },
+      { label: 'Origine maternelle', color: MAT, shape: 'triangle', note: 'bouts pointus' },
+    ];
+    if (mode === 'meiose') {
+      base.push({ label: 'Point de crossing-over', color: CROSS, shape: 'ring', note: 'chromatide recombinée' });
+    }
+    return base;
+  }, [mode]);
 
   return (
     <LabScene cameraPosition={[0, 0.9, 7.6]} background="#FCE7F3" minDistance={4} maxDistance={14} groundY={null}>
@@ -443,6 +593,30 @@ export default function DivisionScene({ mode, phase }: DivisionSceneProps) {
           )}
         </group>
       ))}
+
+      {/* Trace de la phase précédente : d'où viennent les chromosomes ? */}
+      {ghost && (
+        <GhostState
+          opacity={0.3}
+          wireframe
+          tone="svt"
+          caption={`Trace : ${ghost.title}`}
+          captionPosition={[0, 1.62, 0]}
+          distanceFactor={6}
+        >
+          {ghost.chromos.map((c) => (
+            <group key={`gc-${c.id}`} position={c.pos} rotation={[0, 0, c.rotZ]}>
+              <ChromoBody arms={c.arms} len={c.len} thin={c.thin} />
+            </group>
+          ))}
+          {ghost.plates.map((pl, i) => (
+            <mesh key={`gp-${i}`} position={[pl.x, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+              <ringGeometry args={[pl.r, pl.r + 0.035, 40]} />
+              <meshStandardMaterial color="#0EA5E9" side={DoubleSide} />
+            </mesh>
+          ))}
+        </GhostState>
+      )}
 
       {/* Plaque équatoriale : anneau (vu de biais) + repère pointillé derrière */}
       {stage.plates.map((pl, i) => (
@@ -472,7 +646,7 @@ export default function DivisionScene({ mode, phase }: DivisionSceneProps) {
       ))}
 
       {/* Chromosomes — position pilotée par <Animate> (migration lissée) */}
-      {stage.chromos.map((c) => (
+      {stage.chromos.map((c, i) => (
         <group
           key={c.id}
           ref={(el) => {
@@ -480,40 +654,127 @@ export default function DivisionScene({ mode, phase }: DivisionSceneProps) {
             else refs.current.delete(c.id);
           }}
         >
-          <ChromoBody arms={c.arms} len={c.len} thin={c.thin} />
+          {c.thin ? (
+            <FloatingChromo chromo={c} seed={i} />
+          ) : (
+            <ChromoBody arms={c.arms} len={c.len} thin={c.thin} />
+          )}
         </group>
       ))}
 
       <Animate
         fn={(_state, delta) => {
-          const k = 1 - Math.exp(-delta * 5);
+          // Changement de phase : on repart de la pose RÉELLE de chaque
+          // chromosome (ou de `from` pour ceux qui viennent d'apparaître).
+          if (lastKey.current !== stageKey) {
+            lastKey.current = stageKey;
+            elapsed.current = 0;
+            starts.current.clear();
+            for (const c of stage.chromos) {
+              const g = refs.current.get(c.id);
+              if (!g) continue;
+              if (!g.userData.ready) {
+                const s = c.from ?? c.pos;
+                g.position.set(s[0], s[1], s[2]);
+                g.rotation.z = c.rotZ;
+                g.userData.ready = true;
+              }
+              starts.current.set(c.id, [g.position.x, g.position.y, g.position.z, g.rotation.z]);
+            }
+          }
+
+          elapsed.current = Math.min(elapsed.current + delta, dur);
+          const u = easing(elapsed.current / dur);
+
           for (const c of stage.chromos) {
             const g = refs.current.get(c.id);
             if (!g) continue;
-            if (!g.userData.ready) {
-              const s = c.from ?? c.pos;
-              g.position.set(s[0], s[1], s[2]);
+            let s = starts.current.get(c.id);
+            if (!s) {
+              const f = c.from ?? c.pos;
               g.rotation.z = c.rotZ;
               g.userData.ready = true;
+              s = [f[0], f[1], f[2], c.rotZ];
+              starts.current.set(c.id, s);
             }
-            g.position.lerp(tmp.set(c.pos[0], c.pos[1], c.pos[2]), k);
-            g.rotation.z += (c.rotZ - g.rotation.z) * k;
+            g.position.set(mix(s[0], c.pos[0], u), mix(s[1], c.pos[1], u), mix(s[2], c.pos[2], u));
+            g.rotation.z = mix(s[3], c.rotZ, u);
           }
         }}
       />
 
+      {/* Le détail que les élèves ratent : halo qui respire. */}
+      {stage.focus && (
+        <FocusHalo
+          position={stage.focus.pos}
+          radius={stage.focus.radius}
+          tone="chimie"
+          color={CROSS}
+          label={stage.focus.label}
+          labelOffset={0.3}
+          distanceFactor={6}
+        />
+      )}
+
       {stage.tags.map((t, i) => (
-        <Tag3D key={`tag-${i}`} position={t.pos} label={t.label} tone="svt" />
+        <Tag3D key={`tag-${i}`} position={t.pos} label={t.label} tone="svt" distanceFactor={6} />
       ))}
 
       <SceneLabel
-        position={[0, 2.15, 0]}
+        position={[0, 2.7, 0]}
         title={stage.title}
         subtitle={`${mode === 'mitose' ? 'Mitose' : 'Méiose'} · ${stage.cells.length} cellule${stage.cells.length > 1 ? 's' : ''}`}
         tone="svt"
+        distanceFactor={7}
       />
-      <Readout position={[-2.95, 1.5, 0]} value={stage.nChr} caption="chromosomes / cellule" />
-      <Readout position={[2.95, 1.5, 0]} value={stage.adn} unit="Q" caption="ADN / cellule" />
+      <Readout position={[-1.95, 2.02, 0]} value={stage.nChr} caption="chromosomes / cellule" distanceFactor={6} />
+      <Readout position={[1.95, 2.02, 0]} value={stage.adn} unit="Q" caption="ADN / cellule" distanceFactor={6} />
+
+      {/* Où en est la division ? phases faites cochées, suivantes estompées. */}
+      <StepNarration
+        position={[-3.35, 0.3, 0]}
+        tone="svt"
+        title={mode === 'mitose' ? 'Mitose — où en es-tu ?' : 'Méiose — où en es-tu ?'}
+        steps={NARRATION[mode]}
+        current={phase}
+        width={188}
+        distanceFactor={5.6}
+      />
+
+      <LegendCard
+        position={[-3.3, -1.7, 0]}
+        tone="svt"
+        title="Lire les chromosomes"
+        items={legend}
+        width={182}
+        distanceFactor={5.6}
+      />
+
+      {/* La comparaison centrale du chapitre — bilan des cellules filles. */}
+      <CompareCard
+        position={[3.3, 1.35, 0]}
+        tone="svt"
+        title="Cellules filles : chromosomes"
+        left={{ label: 'Mitose', value: 4, unit: 'chr' }}
+        right={{ label: 'Méiose', value: 2, unit: 'chr' }}
+        precision={0}
+        deltaLabel="Écart"
+        verdict="La méiose divise le caryotype par 2 : 2n = 4 → n = 2."
+        width={190}
+        distanceFactor={5.6}
+      />
+      <CompareCard
+        position={[3.3, -1.6, 0]}
+        tone="svt"
+        title="Cellules filles : quantité d’ADN"
+        left={{ label: 'Mitose', value: 2, unit: 'Q' }}
+        right={{ label: 'Méiose', value: 1, unit: 'Q' }}
+        precision={0}
+        deltaLabel="Écart"
+        verdict="Une seule réplication pour deux divisions : l’ADN est aussi divisé par 2."
+        width={190}
+        distanceFactor={5.6}
+      />
     </LabScene>
   );
 }

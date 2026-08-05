@@ -195,8 +195,10 @@ export function Digestion5eme({ onComplete, busy }: SimulationModuleProps) {
             <Badge tone="svt">2/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            Clique sur chaque organe : le bol alimentaire avance et rétrécit, car il est digéré. Tourne l&apos;appareil digestif avec ta souris
-            / ton doigt. <strong>Visite les 5 organes.</strong>
+            Clique sur chaque organe : le bol alimentaire <strong>parcourt le tube</strong> jusqu&apos;à lui, puis il est brassé et rétrécit,
+            car il est digéré. L&apos;organe étudié est <strong>entouré et éclairé</strong>, les autres sont mis en retrait. À gauche de la
+            scène, la fiche te donne le <strong>temps de séjour</strong> réel dans chaque organe. Tourne l&apos;appareil digestif avec ta
+            souris / ton doigt. <strong>Visite les 5 organes.</strong>
           </p>
           <div className="overflow-hidden rounded-2xl ring-1 ring-emerald-100">
             <div className="aspect-[4/3] w-full">
@@ -234,8 +236,9 @@ export function Digestion5eme({ onComplete, busy }: SimulationModuleProps) {
             <Badge tone="svt">3/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            Règle la durée d&apos;incubation à 37 °C (la température du corps), puis verse l&apos;<strong>eau iodée</strong> et observe la
-            couleur des deux tubes. Enregistre au moins <strong>deux</strong> essais.
+            Règle la durée d&apos;incubation à 37 °C (la température du corps) : en bas à gauche, la <strong>courbe verte</strong> se trace
+            et montre combien il reste d&apos;amidon minute après minute. Verse ensuite l&apos;<strong>eau iodée</strong> et observe la couleur
+            des deux tubes. Enregistre au moins <strong>deux</strong> essais.
           </p>
           <div className="overflow-hidden rounded-2xl ring-1 ring-emerald-100">
             <div className="aspect-[4/3] w-full">

@@ -278,9 +278,26 @@ export function SystemeImmunitaire3eme({ onComplete, busy }: SimulationModulePro
 
           <div className="overflow-hidden rounded-2xl ring-1 ring-emerald-100">
             <div className="aspect-[4/3] w-full">
-              <ImmuneScene view={view} peauIntacte={peauIntacte} rappel={rappel} jour={jour} taux={taux} />
+              <ImmuneScene
+                view={view}
+                peauIntacte={peauIntacte}
+                rappel={rappel}
+                jour={jour}
+                taux={taux}
+                protPrim={protPrim}
+                protSec={protSec}
+                picPrim={picPrim.valeur}
+                picSec={picSec.valeur}
+              />
             </div>
           </div>
+
+          {view === 'phagocytose' && (
+            <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-900 ring-1 ring-emerald-100">
+              La fiche « <strong>La phagocytose, temps par temps</strong> » à gauche de la scène commente le film en
+              direct : lis le temps affiché (1/4, 2/4…) et regarde ce que fait le macrophage au même moment.
+            </p>
+          )}
 
           {view === 'barriere' && (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -347,14 +364,25 @@ export function SystemeImmunitaire3eme({ onComplete, busy }: SimulationModulePro
             <Badge tone="svt">3/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            Voici le <strong>taux d&apos;anticorps</strong> jour après jour. La courbe bleue est la{' '}
-            <strong>réponse primaire</strong> (1re rencontre), la verte la <strong>réponse secondaire</strong> (après le
-            rappel). Déplace le curseur pour lire une valeur.
+            Voici le <strong>taux d&apos;anticorps</strong> jour après jour. Déplace le curseur : la courbe{' '}
+            <strong>se construit sous tes yeux</strong>. La courbe bleue est la <strong>réponse primaire</strong>{' '}
+            (1re rencontre), la verte la <strong>réponse secondaire</strong> (après le rappel) — quand tu passes à la
+            secondaire, la primaire reste en <strong>trace estompée</strong> pour que tu puisses comparer.
           </p>
 
           <div className="overflow-hidden rounded-2xl ring-1 ring-emerald-100">
             <div className="aspect-[4/3] w-full">
-              <ImmuneScene view="memoire" peauIntacte={peauIntacte} rappel={rappel} jour={jour} taux={taux} />
+              <ImmuneScene
+                view="memoire"
+                peauIntacte={peauIntacte}
+                rappel={rappel}
+                jour={jour}
+                taux={taux}
+                protPrim={protPrim}
+                protSec={protSec}
+                picPrim={picPrim.valeur}
+                picSec={picSec.valeur}
+              />
             </div>
           </div>
 

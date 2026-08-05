@@ -311,8 +311,12 @@ export function MeioseMitoseTerminale({ onComplete, busy }: SimulationModuleProp
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
             Fais défiler les phases avec le curseur et observe les chromosomes se condenser, s&apos;aligner puis migrer.
-            Bleu = homologue d&apos;origine paternelle, rouge = maternelle. Parcours <strong>toutes</strong> les phases
-            de la mitose <strong>et</strong> de la méiose. Tourne la scène avec ta souris ou ton doigt.
+            Bleu <strong>à bouts carrés</strong> = homologue d&apos;origine paternelle, rouge{' '}
+            <strong>à bouts pointus</strong> = maternelle ; l&apos;anneau violet marque le point de{' '}
+            <strong>crossing-over</strong>. Dans la scène, le fil des phases se coche à mesure que tu avances, et
+            pendant l&apos;anaphase la <strong>position précédente reste en trace</strong> : regarde les chromosomes
+            ralentir en arrivant aux pôles. Parcours <strong>toutes</strong> les phases de la mitose{' '}
+            <strong>et</strong> de la méiose. Tourne la scène avec ta souris ou ton doigt.
           </p>
 
           <div className="mb-3 flex flex-wrap gap-2">

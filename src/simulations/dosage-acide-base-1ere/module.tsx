@@ -67,6 +67,9 @@ function phAt(vb: number) {
   return Math.min(12.6, 11 + (vb - VB_EQ - 0.5) * 0.16);
 }
 
+/** pH atteint pile au volume équivalent (repère du saut dans la scène 3D). */
+const PH_EQ = phAt(VB_EQ);
+
 export function DosageAcideBase1ere({ onComplete, busy }: SimulationModuleProps) {
   const [step, setStep] = useState<Step>('intro');
   const [vb, setVb] = useState(0);
@@ -79,20 +82,6 @@ export function DosageAcideBase1ere({ onComplete, busy }: SimulationModuleProps)
   const [qIndic, setQIndic] = useState<string | null>(null);
 
   const ph = useMemo(() => phAt(vb), [vb]);
-
-  // points de la courbe pH=f(Vb) en coordonnées scène (cadre 1,7 × 1,7)
-  const curve = useMemo<[number, number, number][]>(() => {
-    const pts: [number, number, number][] = [];
-    const N = 48;
-    const vMax = Math.max(vb, 0.001);
-    for (let i = 0; i <= N; i++) {
-      const v = (i / N) * vMax;
-      const x = (v / VB_MAX) * 3.2; // 0 → 3,2
-      const y = ((phAt(v) - 2) / 12) * 3.0; // pH 2..14 → 0..3
-      pts.push([x, y, 0]);
-    }
-    return pts;
-  }, [vb]);
 
   function setVolume(v: number) {
     setVb(v);
@@ -204,11 +193,12 @@ export function DosageAcideBase1ere({ onComplete, busy }: SimulationModuleProps)
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
             Fais glisser le curseur pour verser la base. Regarde le niveau de la burette baisser, les gouttes tomber et
-            le pH monter. Repère le <strong>virage au rose</strong>. Tourne la scène avec ta souris / ton doigt.
+            la <strong>courbe pH = f(Vb) se construire point par point</strong> à droite. Repère le{' '}
+            <strong>virage au rose</strong>. Tourne la scène avec ta souris / ton doigt.
           </p>
           <div className="overflow-hidden rounded-2xl ring-1 ring-violet-100">
             <div className="aspect-[4/3] w-full">
-              <DosageScene vb={vb} vbMax={VB_MAX} vbEq={VB_EQ} ph={ph} curve={curve} />
+              <DosageScene vb={vb} vbMax={VB_MAX} vbEq={VB_EQ} ph={ph} phEq={PH_EQ} va={VA} cb={CB} />
             </div>
           </div>
           <div className="mt-4">

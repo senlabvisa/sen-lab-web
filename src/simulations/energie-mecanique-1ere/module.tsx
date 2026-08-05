@@ -191,8 +191,11 @@ export function EnergieMecanique1ere({ onComplete, busy }: SimulationModuleProps
             <Badge tone="physique">2/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            Change la hauteur de lâcher et la masse, puis observe les trois barres. Le trait orange marque
-            E<sub>m</sub> au départ. Ensuite, monte le curseur de frottement. Tourne la scène avec ta souris ou ton
+            Change la hauteur de lâcher et la masse, puis observe les trois barres : elles rejoignent leur valeur en
+            douceur. La bille <strong>laisse sa trace</strong> sur le rail, et deux <strong>billes fantômes</strong>{' '}
+            marquent la hauteur de lâcher h₀. Regarde si la bille les rejoint. La carte «&nbsp;Énergie
+            mécanique&nbsp;» compare E<sub>m</sub> au départ et E<sub>m</sub> maintenant : l&apos;écart, c&apos;est
+            l&apos;énergie dissipée. Ensuite, monte le curseur de frottement. Tourne la scène avec ta souris ou ton
             doigt.
           </p>
           <div className="overflow-hidden rounded-2xl ring-1 ring-science-100">

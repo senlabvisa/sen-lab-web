@@ -95,6 +95,12 @@ export function ChangementsEtat6eme({ onComplete, busy }: SimulationModuleProps)
   const [step, setStep] = useState<Step>('intro');
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
+  /**
+   * Incrémenté quand l'élève recommence ou revient en arrière : la scène efface
+   * alors la trace de la courbe et la fait repartir du nouvel instant, au lieu
+   * de tirer un trait faux à travers le graphe.
+   */
+  const [runId, setRunId] = useState(0);
   const [phasesSeen, setPhasesSeen] = useState<Set<Phase>>(new Set(['glace']));
   const [marks, setMarks] = useState<Array<{ t: number; temp: number; phase: Phase }>>([]);
 
@@ -124,6 +130,7 @@ export function ChangementsEtat6eme({ onComplete, busy }: SimulationModuleProps)
   function reset() {
     setPlaying(false);
     setTime(0);
+    setRunId((n) => n + 1);
   }
 
   function record() {
@@ -250,14 +257,20 @@ export function ChangementsEtat6eme({ onComplete, busy }: SimulationModuleProps)
             <Badge tone="science">2/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            Appuie sur <strong>Chauffer</strong>. Regarde en même temps le bécher (à gauche) et le point
-            noir qui avance sur la courbe (à droite). Tu peux aussi faire glisser le curseur du temps
-            pour revenir en arrière. Tourne la scène avec ta souris / ton doigt.
+            Appuie sur <strong>Chauffer</strong>. La courbe n&apos;est pas dessinée d&apos;avance :{' '}
+            <strong>c&apos;est le point noir qui la trace</strong> pendant que l&apos;eau chauffe. Regarde
+            en même temps le bécher (à gauche) et la courbe qui se construit (à droite), et compare la
+            température de l&apos;eau à celle de la plaque. Tu peux faire glisser le curseur du temps.
+            Tourne la scène avec ta souris / ton doigt.
           </p>
 
           <div className="overflow-hidden rounded-2xl ring-1 ring-orange-100">
             <div className="aspect-[4/3] w-full">
-              <HeatingScene time={time} marks={marks.map((m) => [m.t, m.temp] as [number, number])} />
+              <HeatingScene
+                time={time}
+                runId={runId}
+                marks={marks.map((m) => [m.t, m.temp] as [number, number])}
+              />
             </div>
           </div>
 
@@ -276,8 +289,10 @@ export function ChangementsEtat6eme({ onComplete, busy }: SimulationModuleProps)
               step={1}
               value={time}
               onChange={(e) => {
+                const v = Number(e.target.value);
                 setPlaying(false);
-                setTime(Number(e.target.value));
+                if (v < time - 0.5) setRunId((n) => n + 1);
+                setTime(v);
               }}
               className="slider-lab w-full"
             />

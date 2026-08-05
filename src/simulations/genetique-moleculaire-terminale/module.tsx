@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ArrowRight, CheckCircle2, Dna, FlaskConical, HeartPulse, Microscope, Target } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Dna, FlaskConical, HeartPulse, Microscope, Play, Square, Target } from 'lucide-react';
 import type { SimulationModuleProps } from '@senlabvisa/shared-types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -109,12 +109,17 @@ export function GenetiqueMoleculaireTerminale({ onComplete, busy }: SimulationMo
   const [transcribed, setTranscribed] = useState(false);
   const [traduites, setTraduites] = useState<Set<Mut>>(new Set());
   const [hypo, setHypo] = useState<HypoRep>(null);
+  /** Film automatique de la synthèse (transcription puis traduction). */
+  const [cine, setCine] = useState(false);
+  const [runKey, setRunKey] = useState(0);
 
   const [qComp, setQComp] = useState<string | null>(null);
   const [qDrep, setQDrep] = useState<string | null>(null);
   const [qSil, setQSil] = useState<string | null>(null);
 
   const bio = useMemo(() => build(mut), [mut]);
+  /** Référence allèle A : sert de témoin fantôme dans la scène 3D. */
+  const ref = useMemo(() => build('aucune'), []);
   const chain = useMemo(() => bio.aminos.slice(0, codonIndex).filter((a) => a !== 'STOP'), [bio.aminos, codonIndex]);
   const allMutTested = (['silencieuse', 'fauxsens', 'nonsens'] as Mut[]).every((m) => traduites.has(m));
   const manipDone = transcribed && traduites.has('aucune') && allMutTested;
@@ -132,7 +137,30 @@ export function GenetiqueMoleculaireTerminale({ onComplete, busy }: SimulationMo
   function pickMutation(m: Mut) {
     setMut(m);
     setCodonIndex(0);
+    setCine(false);
     if (transcribed) setNt(21);
+  }
+
+  /** Lance (ou relance) le film : la scène déroule les 6 temps du dogme central. */
+  function playFilm() {
+    setPhase('transcription');
+    setNt(0);
+    setCodonIndex(0);
+    setRunKey((k) => k + 1);
+    setCine(true);
+  }
+
+  /**
+   * Fin du film : équivaut à avoir cliqué « Transcrire tout le gène » puis
+   * « Traduire jusqu'au bout ». Le barème du TP est inchangé.
+   */
+  function finishFilm() {
+    setCine(false);
+    setNt(21);
+    setTranscribed(true);
+    setPhase('traduction');
+    setCodonIndex(CODON_COUNT);
+    setTraduites((prev) => new Set(prev).add(mut));
   }
 
   const score = useMemo(() => {
@@ -242,9 +270,10 @@ export function GenetiqueMoleculaireTerminale({ onComplete, busy }: SimulationMo
             <Badge tone="svt">2/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            D&apos;abord <strong>transcris</strong> tout le gène (21 nucléotides), puis <strong>traduis</strong> l&apos;ARNm
-            codon par codon. Ensuite, provoque chaque mutation et recommence la traduction. Tourne la scène avec ta
-            souris ou ton doigt.
+            Regarde d&apos;abord le <strong>film de la synthèse</strong> : l&apos;ADN s&apos;ouvre, l&apos;ARN polymérase
+            écrit l&apos;ARNm, puis le ribosome le lit codon par codon. Ensuite, refais-le toi-même : <strong>transcris</strong>{' '}
+            tout le gène (21 nucléotides), puis <strong>traduis</strong> l&apos;ARNm codon par codon. Enfin, provoque
+            chaque mutation et recommence la traduction. Tourne la scène avec ta souris ou ton doigt.
           </p>
 
           <div className="overflow-hidden rounded-2xl ring-1 ring-emerald-100">
@@ -257,23 +286,50 @@ export function GenetiqueMoleculaireTerminale({ onComplete, busy }: SimulationMo
                 mrna={bio.mrna}
                 aminos={bio.aminos}
                 mutIndex={bio.mutIndex}
+                refMrna={ref.mrna}
+                refAminos={ref.aminos}
+                cine={cine}
+                runKey={runKey}
+                onCineEnd={finishFilm}
               />
             </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant={phase === 'transcription' ? 'gradient' : 'outline'} size="sm" onClick={() => setPhase('transcription')}>
+            <Button variant={cine ? 'danger' : 'soft'} size="sm" onClick={cine ? () => setCine(false) : playFilm}>
+              {cine ? (
+                <>
+                  <Square className="h-4 w-4" /> Arrêter le film
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" /> Voir le film de la synthèse
+                </>
+              )}
+            </Button>
+            <Button
+              variant={phase === 'transcription' && !cine ? 'gradient' : 'outline'}
+              size="sm"
+              disabled={cine}
+              onClick={() => setPhase('transcription')}
+            >
               1. Transcription {transcribed ? '✓' : ''}
             </Button>
             <Button
-              variant={phase === 'traduction' ? 'gradient' : 'outline'}
+              variant={phase === 'traduction' && !cine ? 'gradient' : 'outline'}
               size="sm"
-              disabled={nt < 21}
+              disabled={cine || nt < 21}
               onClick={() => setPhase('traduction')}
             >
               2. Traduction {traduites.has(mut) ? '✓' : ''}
             </Button>
-            {nt < 21 && <span className="self-center text-xs text-ink/50">Termine la transcription pour traduire.</span>}
+            {cine ? (
+              <span className="self-center text-xs text-action-700">
+                Le film se déroule tout seul : suis la légende « Ce que tu observes ».
+              </span>
+            ) : (
+              nt < 21 && <span className="self-center text-xs text-ink/50">Termine la transcription pour traduire.</span>
+            )}
           </div>
 
           {phase === 'transcription' ? (
@@ -289,14 +345,15 @@ export function GenetiqueMoleculaireTerminale({ onComplete, busy }: SimulationMo
                 max={21}
                 step={1}
                 value={nt}
+                disabled={cine}
                 onChange={(e) => changeNt(Number(e.target.value))}
                 className="slider-lab w-full"
               />
               <div className="mt-2 flex gap-2">
-                <Button variant="soft" size="sm" onClick={() => changeNt(Math.min(21, nt + 1))}>
+                <Button variant="soft" size="sm" disabled={cine} onClick={() => changeNt(Math.min(21, nt + 1))}>
                   + 1 nucléotide
                 </Button>
-                <Button variant="soft" size="sm" onClick={() => changeNt(21)}>
+                <Button variant="soft" size="sm" disabled={cine} onClick={() => changeNt(21)}>
                   Transcrire tout le gène
                 </Button>
               </div>
@@ -316,14 +373,20 @@ export function GenetiqueMoleculaireTerminale({ onComplete, busy }: SimulationMo
                 max={CODON_COUNT}
                 step={1}
                 value={codonIndex}
+                disabled={cine}
                 onChange={(e) => changeCodon(Number(e.target.value))}
                 className="slider-lab w-full"
               />
               <div className="mt-2 flex gap-2">
-                <Button variant="soft" size="sm" onClick={() => changeCodon(Math.min(CODON_COUNT, codonIndex + 1))}>
+                <Button
+                  variant="soft"
+                  size="sm"
+                  disabled={cine}
+                  onClick={() => changeCodon(Math.min(CODON_COUNT, codonIndex + 1))}
+                >
                   + 1 codon
                 </Button>
-                <Button variant="soft" size="sm" onClick={() => changeCodon(CODON_COUNT)}>
+                <Button variant="soft" size="sm" disabled={cine} onClick={() => changeCodon(CODON_COUNT)}>
                   Traduire jusqu&apos;au bout
                 </Button>
               </div>
@@ -333,7 +396,14 @@ export function GenetiqueMoleculaireTerminale({ onComplete, busy }: SimulationMo
           {/* Séquences lisibles */}
           <div className="mt-4 space-y-2 rounded-2xl bg-night-900 p-3 font-mono text-[11px] leading-relaxed text-white/90 sm:text-xs">
             <SeqLine tag="ADN transcrit" prefix="3'" suffix="5'" seq={bio.template} highlight={bio.mutIndex} shown={21} />
-            <SeqLine tag="ARNm" prefix="5'" suffix="3'" seq={bio.mrna} highlight={bio.mutIndex} shown={phase === 'transcription' ? nt : 21} />
+            <SeqLine
+              tag="ARNm"
+              prefix="5'"
+              suffix="3'"
+              seq={bio.mrna}
+              highlight={bio.mutIndex}
+              shown={cine || phase === 'traduction' ? 21 : nt}
+            />
             <div className="flex flex-wrap items-baseline gap-x-2">
               <span className="w-24 shrink-0 text-white/40">Protéine</span>
               <span className="text-emerald-300">
