@@ -8,3 +8,9 @@ coverage
 *.log
 .DS_Store
 next-env.d.ts
+
+# Outillage local (Claude Code, configs de lancement)
+.claude
+
+# Artefact de compilation TypeScript, régénéré à chaque tsc
+tsconfig.tsbuildinfo
