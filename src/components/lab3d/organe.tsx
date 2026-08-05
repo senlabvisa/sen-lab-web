@@ -41,6 +41,8 @@ import {
   Group,
   LinearFilter,
   LinearMipmapLinearFilter,
+  Matrix3,
+  Matrix4,
   Mesh,
   MeshStandardMaterial,
   Plane,
@@ -142,6 +144,100 @@ function reglerMateriau(materiau: Material, anisotropie: number) {
   materiau.needsUpdate = true;
 }
 
+/**
+ * Cônes de direction, du plus serré au plus large. Le dernier accepte tout.
+ * Ils servent à garder un repère du CÔTÉ de l'organe que les données visent :
+ * sans eux, le sommet le plus proche peut se trouver sur la face opposée et la
+ * pastille traverse la pièce.
+ */
+const CONES_DIRECTION = [0.94, 0.82, 0.6, -1.1];
+/**
+ * De combien la pastille est décollée de la surface.
+ *
+ * Doit rester supérieur au rayon de la pastille (0,12 au maximum) : sinon la
+ * sphère est enterrée dans le maillage et le test de profondeur n'en laisse
+ * dépasser qu'une calotte à peine visible.
+ */
+const DECOLLEMENT = 0.14;
+
+type Candidat = { distance: number; index: number; point: Vector3; maillage: Mesh };
+
+/**
+ * Pose chaque repère SUR la coque du modèle.
+ *
+ * Les coordonnées de `lib/anatomie/organes.ts` sont saisies à la main : elles
+ * indiquent une intention (« vers la queue du pancréas »), pas un point exact
+ * de la surface. Telles quelles, une pastille flotte à côté de l'organe ou
+ * disparaît à l'intérieur — c'est très visible sur les organes allongés.
+ *
+ * Un seul passage linéaire sur les sommets, à l'ouverture de la pièce : bien
+ * moins coûteux et bien plus stable qu'un lancer de rayon à chaque image.
+ */
+function poserSurLaSurface(points: readonly PointOrgane[], racine: Object3D): Vector3[] {
+  const cibles = points.map((point) => new Vector3(...point.position));
+  if (cibles.length === 0) return cibles;
+
+  const directions = cibles.map((cible) => cible.clone().normalize());
+  const paliers: (Candidat | null)[][] = cibles.map(() => CONES_DIRECTION.map(() => null));
+
+  racine.updateWorldMatrix(true, true);
+  const versRacine = new Matrix4().copy(racine.matrixWorld).invert();
+  const locale = new Matrix4();
+  const sommet = new Vector3();
+  let trouve = false;
+
+  racine.traverse((enfant) => {
+    if (!(enfant instanceof Mesh)) return;
+    const positions = enfant.geometry.getAttribute('position');
+    if (!positions) return;
+    trouve = true;
+    locale.multiplyMatrices(versRacine, enfant.matrixWorld);
+
+    for (let i = 0; i < positions.count; i += 1) {
+      sommet.fromBufferAttribute(positions, i).applyMatrix4(locale);
+      const rayon = sommet.length();
+      for (let h = 0; h < cibles.length; h += 1) {
+        const distance = sommet.distanceToSquared(cibles[h]);
+        const cosinus = rayon > 1e-5 ? sommet.dot(directions[h]) / rayon : 1;
+        for (let t = 0; t < CONES_DIRECTION.length; t += 1) {
+          if (cosinus < CONES_DIRECTION[t]) continue;
+          const meilleur = paliers[h][t];
+          if (meilleur && meilleur.distance <= distance) continue;
+          if (meilleur) {
+            meilleur.distance = distance;
+            meilleur.index = i;
+            meilleur.maillage = enfant;
+            meilleur.point.copy(sommet);
+          } else {
+            paliers[h][t] = { distance, index: i, maillage: enfant, point: sommet.clone() };
+          }
+        }
+      }
+    }
+  });
+
+  if (!trouve) return cibles;
+
+  const normale = new Vector3();
+  const matriceNormale = new Matrix3();
+  return cibles.map((cible, h) => {
+    const choisi = paliers[h].find(Boolean);
+    if (!choisi) return cible;
+    const normales = choisi.maillage.geometry.getAttribute('normal');
+    if (normales) {
+      locale.multiplyMatrices(versRacine, choisi.maillage.matrixWorld);
+      matriceNormale.getNormalMatrix(locale);
+      normale.fromBufferAttribute(normales, choisi.index).applyMatrix3(matriceNormale).normalize();
+    } else {
+      normale.copy(choisi.point).normalize();
+    }
+    // Décoller vers l'extérieur même si le triangle le plus proche regarde
+    // vers l'intérieur.
+    if (normale.dot(choisi.point) < 0) normale.negate();
+    return choisi.point.clone().addScaledVector(normale, DECOLLEMENT);
+  });
+}
+
 function pourChaqueMateriau(objet: Object3D, fn: (materiau: Material) => void) {
   objet.traverse((enfant) => {
     if (!(enfant instanceof Mesh)) return;
@@ -151,50 +247,18 @@ function pourChaqueMateriau(objet: Object3D, fn: (materiau: Material) => void) {
 }
 
 /**
- * Le modèle lui-même : chargé, normalisé, réglé.
+ * Charge le modèle, le clone, règle ses matériaux et l'inscrit dans le cube
+ * normalisé — puis pose les repères sur sa surface.
  *
- * ⚠ Ce que ces modèles SONT, et ce qu'ils ne sont pas.
- * Chaque .glb est un maillage unique — une enveloppe extérieure, sans aucune
- * géométrie interne : ni cavités du cœur, ni lobes séparés. Deux conséquences
- * qu'aucune astuce de rendu ne lèvera :
- *   • couper la pièce ne peut pas révéler les quatre cavités : elles n'existent
- *     pas dans le fichier. La coupe montre une SECTION DE L'ENVELOPPE, et
- *     l'interface doit le dire (voir la mention dans la visionneuse).
- *   • isoler une structure nommée est impossible : il n'y a qu'un seul objet.
- * Pour l'intérieur d'un organe, la scène schématique du TP reste l'outil juste.
+ * Les deux vont ensemble : les repères sont projetés sur CETTE pièce-là, celle
+ * qui sera rendue. Les séparer ferait dériver les pastilles dès qu'on toucherait
+ * à la normalisation.
  */
-function Piece({
-  src,
-  coupe,
-  filDeFer,
-  transparence,
-  couleurCoupe,
-}: {
-  src: string;
-  coupe: boolean;
-  filDeFer: boolean;
-  transparence: boolean;
-  couleurCoupe: string;
-}) {
+function usePiecePreparee(src: string, points: readonly PointOrgane[]) {
   const gl = useThree((state) => state.gl);
   const { scene } = useGLTF(src, false);
 
-  /**
-   * Le plan retire la moitié AVANT de la pièce et garde celle du fond : la
-   * surface tranchée fait alors directement face à la caméra, et l'élève
-   * regarde DANS la coupe.
-   *
-   * Les deux autres orientations ont été essayées et écartées : couper
-   * l'arrière ne change rien à l'image (on voit toujours la façade intacte), et
-   * une coupe latérale n'expose qu'une arête vue par la tranche — ce qui se lit
-   * « la moitié de l'organe a disparu » plutôt que « l'organe est ouvert ».
-   *
-   * `constant` glisse de TAILLE_NORMEE (pièce entière) à 0 (coupe à mi-corps) :
-   * c'est un scalpel qui traverse, pas une moitié qui s'éteint d'un coup.
-   */
-  const planCoupe = useMemo(() => new Plane(new Vector3(0, 0, -1), TAILLE_NORMEE), []);
-
-  const piece = useMemo(() => {
+  return useMemo(() => {
     const copie = scene.clone(true);
 
     // Matériaux clonés : les réglages et les outils restent locaux à ce montage.
@@ -220,8 +284,65 @@ function Piece({
     copie.scale.setScalar(facteur);
     copie.position.copy(centre.multiplyScalar(-facteur));
 
-    return copie;
-  }, [scene, gl]);
+    /**
+     * La projection des repères a besoin d'un parent NEUTRE.
+     *
+     * Les coordonnées de `organes.ts` vivent dans l'espace normalisé — celui où
+     * la pièce tient dans un cube d'arête TAILLE_NORMEE. Or `copie` porte
+     * elle-même la mise à l'échelle : la prendre pour repère renverrait les
+     * sommets dans l'espace du modèle brut, à une tout autre échelle, et les
+     * pastilles atterriraient n'importe où. Ce groupe sans transformation rétablit
+     * le bon référentiel.
+     */
+    const racine = new Group();
+    racine.add(copie);
+
+    return { piece: racine, positions: poserSurLaSurface(points, racine) };
+  }, [scene, gl, points]);
+}
+
+/**
+ * Le modèle lui-même : rendu, outils, doublure de coupe.
+ *
+ * ⚠ Ce que ces modèles SONT, et ce qu'ils ne sont pas.
+ * Chaque .glb est un maillage unique — une enveloppe extérieure, sans aucune
+ * géométrie interne : ni cavités du cœur, ni lobes séparés. Deux conséquences
+ * qu'aucune astuce de rendu ne lèvera :
+ *   • couper la pièce ne peut pas révéler les quatre cavités : elles n'existent
+ *     pas dans le fichier. La coupe montre une SECTION DE L'ENVELOPPE, et
+ *     l'interface doit le dire (voir la mention dans la visionneuse).
+ *   • isoler une structure nommée est impossible : il n'y a qu'un seul objet.
+ * Pour l'intérieur d'un organe, la scène schématique du TP reste l'outil juste.
+ */
+function Piece({
+  piece,
+  coupe,
+  filDeFer,
+  transparence,
+  couleurCoupe,
+}: {
+  piece: Object3D;
+  coupe: boolean;
+  filDeFer: boolean;
+  transparence: boolean;
+  couleurCoupe: string;
+}) {
+  const gl = useThree((state) => state.gl);
+
+  /**
+   * Le plan retire la moitié AVANT de la pièce et garde celle du fond : la
+   * surface tranchée fait alors directement face à la caméra, et l'élève
+   * regarde DANS la coupe.
+   *
+   * Les deux autres orientations ont été essayées et écartées : couper
+   * l'arrière ne change rien à l'image (on voit toujours la façade intacte), et
+   * une coupe latérale n'expose qu'une arête vue par la tranche — ce qui se lit
+   * « la moitié de l'organe a disparu » plutôt que « l'organe est ouvert ».
+   *
+   * `constant` glisse de TAILLE_NORMEE (pièce entière) à 0 (coupe à mi-corps) :
+   * c'est un scalpel qui traverse, pas une moitié qui s'éteint d'un coup.
+   */
+  const planCoupe = useMemo(() => new Plane(new Vector3(0, 0, -1), TAILLE_NORMEE), []);
 
   /**
    * Doublure interne : les mêmes faces, vues de l'intérieur, dans une matière
@@ -324,10 +445,13 @@ function DistanceCamera({ distance }: { distance: number }) {
 /** Pastille cliquable posée sur une structure de l'organe. */
 function Point({
   point,
+  position,
   actif,
   onClick,
 }: {
   point: PointOrgane;
+  /** Position projetée sur la surface, calculée une fois par pièce. */
+  position: Vector3;
   actif: boolean;
   onClick: () => void;
 }) {
@@ -346,7 +470,7 @@ function Point({
   const rayon = actif || survol ? 0.12 : 0.095;
 
   return (
-    <group position={point.position}>
+    <group position={position}>
       {/* Pastille pleine, occultée normalement par les tissus : c'est ce qui
           indique qu'un repère est bien du côté que l'élève regarde. */}
       <mesh
@@ -369,11 +493,13 @@ function Point({
         <meshBasicMaterial color={point.couleur} toneMapped={false} />
       </mesh>
 
-      {/* Un anneau blanc détache la pastille des tissus, qui sont souvent de la
-          même famille de couleurs qu'elle. */}
-      <mesh scale={1.3}>
+      {/* Liseré sombre : il détache la pastille des tissus, souvent de la même
+          famille de couleurs qu'elle. Rendu en faces ARRIÈRE et légèrement plus
+          grand, il ne se voit donc qu'au pourtour — une sphère translucide
+          englobante, elle, repeindrait la pastille et la délaverait. */}
+      <mesh scale={1.22}>
         <sphereGeometry args={[rayon, 16, 12]} />
-        <meshBasicMaterial color="#FFFFFF" transparent opacity={actif || survol ? 0.55 : 0.3} toneMapped={false} />
+        <meshBasicMaterial color="#1E293B" side={BackSide} toneMapped={false} />
       </mesh>
 
       {/* Rémanence : un repère situé de l'autre côté de la pièce reste visible
@@ -416,6 +542,7 @@ export function Organe3D({
   position = [0, 0, 0],
 }: Organe3DProps) {
   const pivot = useRef<Group>(null);
+  const { piece, positions } = usePiecePreparee(src, points);
 
   useEffect(() => {
     pivot.current?.rotation.set(...POSE_INITIALE);
@@ -426,30 +553,33 @@ export function Organe3D({
     pivot.current.rotation.y += delta * ((vitesseRotation * Math.PI * 2) / 60);
   });
 
-  const selection = points.find((point) => point.id === pointActif) ?? null;
+  const indexSelection = points.findIndex((point) => point.id === pointActif);
+  const selection = indexSelection >= 0 ? points[indexSelection] : null;
+  const positionSelection = indexSelection >= 0 ? positions[indexSelection] : null;
 
   return (
     <group position={position} scale={echelle}>
       {distance !== undefined && <DistanceCamera distance={distance} />}
       <group ref={pivot} rotation={POSE_INITIALE}>
         <Piece
-          src={src}
+          piece={piece}
           coupe={coupe}
           filDeFer={filDeFer}
           transparence={transparence}
           couleurCoupe={couleurCoupe}
         />
-        {points.map((point) => (
+        {points.map((point, index) => (
           <Point
             key={point.id}
             point={point}
+            position={positions[index]}
             actif={point.id === pointActif}
             onClick={() => onPointClick?.(point.id)}
           />
         ))}
-        {selection && (
+        {selection && positionSelection && (
           <Tag3D
-            position={[selection.position[0], selection.position[1] + 0.32, selection.position[2]]}
+            position={[positionSelection.x, positionSelection.y + 0.32, positionSelection.z]}
             label={selection.label}
             tone={tone}
           />

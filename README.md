@@ -169,8 +169,12 @@ cd ../sen-lab-web && pnpm install && pnpm dev
 pnpm exec tsc --noEmit     # types (doit être silencieux)
 pnpm test                  # 80 tests
 pnpm exec next build       # build de production
-pnpm lint
 ```
+
+> `pnpm lint` est déclaré dans `package.json` mais **ESLint n'est pas encore
+> configuré** dans ce dépôt : la commande ouvre un assistant interactif au lieu
+> de vérifier quoi que ce soit. Ne l'utilise pas tant qu'une configuration n'a
+> pas été ajoutée.
 
 ---
 
