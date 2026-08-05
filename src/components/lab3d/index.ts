@@ -42,6 +42,15 @@ export { Arrow3D, Axes2D, FunctionCurve, PolyLine, DataPoints, Marker, Bar } fro
 // Molécules / ADN
 export { Atom, Bond, Molecule, DNAHelix, MOLECULES, type AtomSpec, type BondSpec } from './molecule';
 
+// Anatomie — pièces réelles (modèles scannés) à côté des schémas en primitives.
+// <Organe3D> appelle useFrame : enfant de <LabScene>.
+//
+// Pas de préchargement au survol ici, volontairement : chaque pièce pèse 2 à
+// 6 Mo, et survoler la liste en déclencherait jusqu'à 31 Mo sur une connexion
+// souvent facturée au volume. Le téléchargement reste un geste choisi
+// (« Emporter hors ligne »), jamais une conséquence d'un mouvement de doigt.
+export { Organe3D, TAILLE_NORMEE, type Organe3DProps, type PointOrgane } from './organe';
+
 // Animation (useFrame sûr, à placer DANS <LabScene>)
 export { Animate } from './anim';
 

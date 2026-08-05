@@ -7,6 +7,8 @@ import { Battery, Resistor, Bulb, Wire, Switch, Meter } from '@/components/lab3d
 import { Axes2D, FunctionCurve, Arrow3D, DataPoints } from '@/components/lab3d/plot';
 import { Molecule, MOLECULES, DNAHelix } from '@/components/lab3d/molecule';
 import { SceneLabel, Tag3D, Readout } from '@/components/lab3d/annotations';
+import { Organe3D } from '@/components/lab3d/organe';
+import { ORGANE_PAR_ID, modeleUrl } from '@/lib/anatomie/organes';
 
 function Tile({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -96,6 +98,23 @@ export default function Gallery() {
         <LabScene cameraPosition={[0, 0, 6]} background="#ECFDF3" groundY={null}>
           <DNAHelix turns={3} height={4} radius={0.8} />
           <SceneLabel position={[0, 2.6, 0]} title="Molécule d'ADN" tone="svt" />
+        </LabScene>
+      </Tile>
+
+      <Tile title="Organe réel — cœur (atlas anatomique)">
+        <LabScene cameraPosition={[0, 0, 7]} fov={42} background="#FFF1F2" groundY={null} postFx={false}>
+          <Organe3D
+            src={modeleUrl('coeur')}
+            autoRotate
+            points={ORGANE_PAR_ID.coeur.pointsInteret}
+          />
+        </LabScene>
+      </Tile>
+
+      <Tile title="Organe réel en coupe — cerveau">
+        <LabScene cameraPosition={[0, 0, 7]} fov={42} background="#FDF2F8" groundY={null} postFx={false}>
+          <Organe3D src={modeleUrl('cerveau')} coupe points={ORGANE_PAR_ID.cerveau.pointsInteret} />
+          <SceneLabel position={[0, 2.6, 0]} title="Coupe du cerveau" tone="svt" />
         </LabScene>
       </Tile>
     </div>

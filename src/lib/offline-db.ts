@@ -34,13 +34,41 @@ export type PendingComplete = {
 
 export type PendingOp = PendingStart | PendingComplete;
 
+/**
+ * Progression de l'élève dans l'atlas anatomique.
+ *
+ * Volontairement 100 % local : l'atlas est un outil de révision, pas une
+ * évaluation. Rien n'est envoyé au serveur et l'enseignant n'y a pas accès —
+ * un élève doit pouvoir rater un quiz d'entraînement sans que cela le suive.
+ * La file `queue` reste le seul canal de synchronisation.
+ */
+export type ProgressionOrgane = {
+  /** Clé primaire : l'identifiant de l'organe (`coeur`, `cerveau`…). */
+  organeId: string;
+  /** Dernière ouverture de la fiche. */
+  vuLe: number;
+  /** Meilleur score obtenu au quiz, jamais écrasé par un moins bon. */
+  meilleurScore?: number;
+  totalQuestions?: number;
+  dernierQuizLe?: number;
+  /** Marqué par l'élève comme « à revoir avant le contrôle ». */
+  aRevoir?: boolean;
+};
+
 export class OfflineDb extends Dexie {
   queue!: Table<PendingOp, number>;
+  atlas!: Table<ProgressionOrgane, string>;
 
   constructor() {
     super('senlabvisa-offline');
     this.version(1).stores({
       queue: '++id, status, kind, localAttemptId, createdAt',
+    });
+    // v2 : ajout de l'atlas. Dexie applique les migrations additives sans
+    // toucher aux données existantes de `queue`.
+    this.version(2).stores({
+      queue: '++id, status, kind, localAttemptId, createdAt',
+      atlas: '&organeId, vuLe, aRevoir',
     });
   }
 }

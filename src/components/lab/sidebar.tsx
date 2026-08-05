@@ -12,6 +12,7 @@ import {
   GraduationCap,
   Building2,
   KeyRound,
+  HeartPulse,
   Sparkles,
   HelpCircle,
   LogOut,
@@ -32,6 +33,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   student: [
     { href: '/dashboard' as Route, label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/student/tps' as Route, label: 'Mes laboratoires', icon: BookOpen },
+    { href: '/atlas' as Route, label: 'Atlas anatomique', icon: HeartPulse },
     { href: '/chatbot' as Route, label: 'Tuteur virtuel', icon: Bot },
     { href: '/student/join' as Route, label: 'Rejoindre une classe', icon: KeyRound },
   ],
@@ -39,6 +41,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { href: '/dashboard' as Route, label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/teacher/classes' as Route, label: 'Mes classes', icon: GraduationCap },
     { href: '/teacher/attempts' as Route, label: 'Tentatives', icon: Target },
+    { href: '/atlas' as Route, label: 'Atlas anatomique', icon: HeartPulse },
     { href: '/chatbot' as Route, label: 'Tuteur virtuel', icon: Bot },
   ],
   admin: [

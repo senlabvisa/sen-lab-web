@@ -45,6 +45,7 @@ import {
   startAttemptOfflineFirst,
 } from '@/lib/sync-queue';
 import { getModule } from '@/simulations/registry';
+import { imageUrl, organesDuTp } from '@/lib/anatomie/organes';
 import { CollabPanel } from '@/components/lab/collab-panel';
 
 export default function TpPage({ params }: { params: { slug: string } }) {
@@ -547,7 +548,56 @@ function IdleView({
           </div>
         </PanelCard>
       ) : null}
+
+      <OrganesDeCeTp slug={sim?.slug} />
     </PageTransition>
+  );
+}
+
+/**
+ * Renvoi vers l'atlas depuis un TP.
+ *
+ * Le lien existait dans l'autre sens seulement : l'atlas proposait ses TP, mais
+ * un élève lancé dans « la circulation sanguine » n'apprenait jamais qu'une
+ * fiche cœur complète l'attendait. Placé avant le démarrage, c'est une
+ * révision ; pendant le TP, ce serait une distraction.
+ */
+function OrganesDeCeTp({ slug }: { slug?: string }) {
+  const organes = slug ? organesDuTp(slug) : [];
+  if (organes.length === 0) return null;
+
+  return (
+    <PanelCard>
+      <p className="font-display text-sm font-bold text-night-900">
+        {organes.length > 1 ? 'Ces organes' : 'Cet organe'} en 3D avant de commencer
+      </p>
+      <p className="mt-0.5 text-xs text-night-500">
+        Fais-{organes.length > 1 ? 'les' : 'le'} tourner dans l’atlas, puis reviens lancer le TP.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {organes.map((organe) => (
+          <Link
+            key={organe.id}
+            href={`/atlas/${organe.id}` as Route}
+            className="group inline-flex items-center gap-2 rounded-2xl bg-night-50/70 py-1.5 pl-1.5 pr-3 transition hover:bg-lab-50"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl(organe.id, 'thumb')}
+              alt=""
+              width={32}
+              height={32}
+              loading="lazy"
+              className="h-8 w-8 object-contain"
+            />
+            <span className="text-sm font-semibold text-night-800 group-hover:text-lab-700">
+              {organe.nom}
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 text-night-400 transition group-hover:translate-x-0.5 group-hover:text-lab-700" />
+          </Link>
+        ))}
+      </div>
+    </PanelCard>
   );
 }
 

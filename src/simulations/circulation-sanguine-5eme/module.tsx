@@ -30,7 +30,19 @@ const HeartScene = dynamic(() => import('./heart-scene'), {
   ),
 });
 
+// La pièce anatomique pèse quelques Mo : elle n'est chargée que si l'élève
+// bascule sur « Cœur réel », jamais à l'ouverture du TP.
+const CoeurReelScene = dynamic(() => import('./coeur-reel-scene'), {
+  ssr: false,
+  loading: () => (
+    <div className="grid h-full min-h-[320px] place-items-center bg-red-50 text-sm text-ink/50">
+      Chargement du cœur réel…
+    </div>
+  ),
+});
+
 type Step = 'intro' | 'hypo' | 'manip' | 'mesures' | 'qcm' | 'done';
+type Vue = 'schema' | 'reel';
 type Focus = 'double' | 'pulmonaire' | 'generale';
 type HypoRep = 'augmente' | 'diminue' | 'constante' | null;
 
@@ -58,6 +70,8 @@ const CONCLUSION =
 export function CirculationSanguine5eme({ onComplete, busy }: SimulationModuleProps) {
   const [step, setStep] = useState<Step>('intro');
   const [bpm, setBpm] = useState(70);
+  const [vue, setVue] = useState<Vue>('schema');
+  const [coupeReel, setCoupeReel] = useState(false);
   const [focus, setFocus] = useState<Focus>('double');
   const [seen, setSeen] = useState<Set<Focus>>(new Set<Focus>(['double']));
   const [measures, setMeasures] = useState<Set<number>>(new Set<number>());
@@ -74,6 +88,10 @@ export function CirculationSanguine5eme({ onComplete, busy }: SimulationModulePr
   function pickFocus(f: Focus) {
     setFocus(f);
     setSeen((prev) => new Set(prev).add(f));
+    // Isoler une circulation n'a de sens que sur le schéma : c'est lui qui
+    // dessine les deux circuits. On y ramène l'élève plutôt que de laisser un
+    // bouton sans effet visible.
+    setVue('schema');
   }
 
   function recordMeasure() {
@@ -185,16 +203,50 @@ export function CirculationSanguine5eme({ onComplete, busy }: SimulationModulePr
             <Badge tone="svt">2/4</Badge>
           </CardHeader>
           <p className="mb-3 text-sm text-ink/70">
-            Regarde les hématies circuler : <strong className="text-blue-700">bleu</strong> = sang pauvre en dioxygène,{' '}
-            <strong className="text-red-700">rouge</strong> = sang riche en dioxygène. Isole chaque circulation, fais
-            varier le rythme, puis enregistre au moins <strong>3 mesures</strong>. Tourne la scène avec ta souris / ton
-            doigt.
+            Regarde les hématies circuler : <strong className="text-blue-700">anneaux bleus</strong> = sang pauvre en
+            dioxygène, <strong className="text-red-700">disques rouges pleins</strong> = sang riche en dioxygène. À
+            gauche de la scène, le <strong>guide du trajet</strong> te dit à chaque instant où tu en es dans le circuit,
+            et le halo t&apos;indique la cavité ou l&apos;organe dont on parle. Isole chaque circulation, fais varier le
+            rythme, puis enregistre au moins <strong>3 mesures</strong>. Tourne la scène avec ta souris / ton doigt.
           </p>
+          {/* Schéma ↔ pièce réelle : le schéma explique, la pièce fait
+              reconnaître. L'élève doit pouvoir passer de l'un à l'autre. */}
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {(['schema', 'reel'] as Vue[]).map((v) => (
+              <Button
+                key={v}
+                variant={vue === v ? 'gradient' : 'outline'}
+                size="sm"
+                onClick={() => setVue(v)}
+              >
+                {v === 'schema' ? 'Schéma animé' : 'Cœur réel'}
+              </Button>
+            ))}
+            {vue === 'reel' && (
+              <Button variant={coupeReel ? 'gradient' : 'outline'} size="sm" onClick={() => setCoupeReel((c) => !c)}>
+                {coupeReel ? 'Refermer la coupe' : 'Couper le cœur'}
+              </Button>
+            )}
+          </div>
+
           <div className="overflow-hidden rounded-2xl ring-1 ring-red-100">
             <div className="aspect-[4/3] w-full">
-              <HeartScene bpm={bpm} focus={focus} />
+              {vue === 'schema' ? (
+                <HeartScene bpm={bpm} focus={focus} />
+              ) : (
+                <CoeurReelScene coupe={coupeReel} />
+              )}
             </div>
           </div>
+
+          {vue === 'reel' && (
+            <p className="mt-2 rounded-xl bg-red-50 p-3 text-xs text-red-900 ring-1 ring-red-100">
+              Voici la pièce anatomique. Retrouve les quatre cavités du schéma :{' '}
+              <strong>les mêmes noms sont posés aux mêmes endroits</strong>. Attention, sur un vrai
+              cœur, le ventricule gauche est bien plus épais que le droit — c&apos;est lui qui doit
+              pousser le sang jusqu&apos;aux pieds.
+            </p>
+          )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {(['double', 'pulmonaire', 'generale'] as Focus[]).map((f) => (
@@ -209,7 +261,8 @@ export function CirculationSanguine5eme({ onComplete, busy }: SimulationModulePr
 
           <p className="mt-3 rounded-xl bg-red-50 p-3 text-xs text-red-900 ring-1 ring-red-100">
             Comme sur le schéma de ton manuel, le <strong>cœur droit</strong> est dessiné à gauche de l&apos;image. La{' '}
-            <strong>cloison</strong> empêche les deux sangs de se mélanger.
+            <strong>cloison</strong> empêche les deux sangs de se mélanger. Quand le guide suit une circulation,{' '}
+            <strong>l&apos;autre devient transparente</strong> : c&apos;est le meilleur moyen de ne plus les confondre.
           </p>
 
           <div className="mt-4">

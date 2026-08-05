@@ -8,6 +8,8 @@ export default defineConfig({
   test: {
     environmentMatchGlobs: [
       ['src/lib/sync-queue.test.ts', 'happy-dom'],
+      // Dexie a besoin d'un environnement navigateur (structuredClone, events).
+      ['src/lib/anatomie/progression.test.ts', 'happy-dom'],
     ],
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
