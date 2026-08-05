@@ -7,13 +7,13 @@ WORKDIR /workspace
 # Shared-types — copie + build (créé le dist/ requis)
 COPY sen-lab-shared-types ./sen-lab-shared-types
 WORKDIR /workspace/sen-lab-shared-types
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --no-frozen-lockfile --prod=false
 RUN pnpm build
 
 # Frontend
 COPY sen-lab-web /workspace/sen-lab-web
 WORKDIR /workspace/sen-lab-web
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --no-frozen-lockfile --prod=false
 
 # NEXT_PUBLIC_* doivent être présents au build (Next.js bake les vars publiques)
 ARG NEXT_PUBLIC_GATEWAY_URL=http://localhost:3010
